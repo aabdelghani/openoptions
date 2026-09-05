@@ -362,6 +362,19 @@ Daemon::~Daemon() {
     injector_.reset();
 }
 
+// Does the device still answer on its current link? A disconnected receiver slot replies with an
+// HID++ error (0x04 on Bolt) instead of the protocol version.
+bool Daemon::linkAlive(ManagedDevice& md) {
+    try {
+        hidpp::Bytes r = md.transport().request(md.dev().index(), 0x00, 0x1, {0, 0, 0x5a}, std::nullopt, false);
+        return r.size() >= 2;
+    } catch (const hidpp::HidppError& e) {
+        return e.code == 0x01;   // HID++ 1.0 device: alive, just no feature 0x0000
+    } catch (...) {
+        return false;
+    }
+}
+
 Daemon::DevPtr Daemon::find(const std::string& id) {
     std::lock_guard<std::mutex> lk(mapMutex_);
     auto it = devices_.find(id);
@@ -528,7 +541,7 @@ bool Daemon::attach(hidpp::Transport& t, uint8_t idx, const hidpp::Node& node) {
         if (&md->transport() == &t && md->dev().index() == idx) return false;
     auto dev = std::make_unique<hidpp::Device>(t, idx);
     try {
-        if (!dev->enumerate()) return false;
+        if (!dev->enumerate()) { DEBUG("enumerate %s/%d: no HID++ 2.0 answer", t.path().c_str(), idx); return false; }
     } catch (const std::exception& e) {
         DEBUG("enumerate %s/%d: %s", t.path().c_str(), idx, e.what());
         return false;
@@ -543,7 +556,17 @@ bool Daemon::attach(hidpp::Transport& t, uint8_t idx, const hidpp::Node& node) {
     }
     if (pid == 0) return false;
     std::string key = Config::key(pid);
-    if (find(key)) return false;
+    if (auto existing = find(key)) {
+        if (&existing->transport() == &t) return false;
+        // the same device on another transport (Bolt vs Bluetooth): keep whichever link still answers
+        if (linkAlive(*existing)) return false;
+        INFO("%s: reachable via %s now, dropping the stale link on %s", existing->dev().name().c_str(), t.path().c_str(), existing->transport().path().c_str());
+        {
+            std::lock_guard<std::mutex> lk(mapMutex_);
+            devices_.erase(key);
+        }
+        broadcast("device_removed", {{"id", key}});
+    }
     auto md = std::make_shared<ManagedDevice>(*this, t, std::move(dev), pid, serial);
     INFO("device %s (%s) pid %04x via %s idx %d, %zu features, %zu controls", md->dev().name().c_str(), md->dev().kind().c_str(),
          pid, t.path().c_str(), idx, md->dev().features().size(), md->dev().controls().size());
@@ -1108,7 +1131,16 @@ json Daemon::rpc(const std::string& method, const json& p) {
         return s;
     }
     if (method == "change_host") {
-        need(p)->dev().changeHost(p["host"].get<int>());
+        auto md = need(p);
+        int host = p["host"].get<int>();
+        try {
+            md->dev().changeHost(host);
+        } catch (const hidpp::Timeout&) {
+            // the device switches away before it acknowledges: that is success
+        } catch (const std::exception& e) {
+            WARN("%s: change host to %d: %s", md->dev().name().c_str(), host + 1, e.what());
+            throw;
+        }
         return true;
     }
     if (method == "pair_start") { pairStart(); return true; }

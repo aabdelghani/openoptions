@@ -183,7 +183,7 @@ Bytes Transport::request10(uint8_t devIdx, uint8_t subId, uint8_t reg, const Byt
 
 std::optional<std::pair<int, int>> Transport::ping(uint8_t devIdx) {
     try {
-        Bytes r = request(devIdx, 0x00, 0x1, {0, 0, 0x5a}, false);
+        Bytes r = request(devIdx, 0x00, 0x1, {0, 0, 0x5a}, std::nullopt);
         if (r.size() < 2) return std::nullopt;
         return std::make_pair(r[0], r[1]);
     } catch (const HidppError&) {

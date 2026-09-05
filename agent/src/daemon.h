@@ -96,6 +96,7 @@ class Daemon {
     void pairCancel();
     void pairBroadcast(const std::string& status);
     DevPtr find(const std::string& id);
+    bool linkAlive(ManagedDevice& md);
     std::vector<DevPtr> snapshot();
 
     Config config_;

@@ -16,7 +16,7 @@
   // ------------------------------------------------------------------ rpc
   async function call(method, params) {
     try { return await window.agent.call(method, params); }
-    catch (e) { toast(e.message || String(e), true); throw e; }
+    catch (e) { toast(String(e.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, ''), true); throw e; }
   }
   function toast(msg, err) {
     const t = $('#toast'); t.textContent = msg; t.hidden = false; t.classList.toggle('err', !!err);

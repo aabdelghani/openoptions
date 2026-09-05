@@ -1,3 +1,4 @@
+#include <tuple>
 #include "protocol.h"
 
 #include <cstdio>
@@ -30,13 +31,13 @@ bool Device::enumerate() {
     if (!pv || pv->first < 2) return false;
     features_.clear();
     features_[ROOT] = {ROOT, 0, 0, 0};
-    Bytes r = t_.request(index_, 0, 0, {static_cast<uint8_t>(FEATURE_SET >> 8), static_cast<uint8_t>(FEATURE_SET & 0xFF)}, false);
+    Bytes r = t_.request(index_, 0, 0, {static_cast<uint8_t>(FEATURE_SET >> 8), static_cast<uint8_t>(FEATURE_SET & 0xFF)}, std::nullopt);
     if (r.size() < 3 || r[0] == 0) return false;
     uint8_t fs = r[0];
     features_[FEATURE_SET] = {FEATURE_SET, fs, r[2], 0};
-    int count = t_.request(index_, fs, 0, {}, false)[0];
+    int count = t_.request(index_, fs, 0, {}, std::nullopt)[0];
     for (int i = 1; i <= count; ++i) {
-        Bytes fr = t_.request(index_, fs, 1, {static_cast<uint8_t>(i)}, false);
+        Bytes fr = t_.request(index_, fs, 1, {static_cast<uint8_t>(i)}, std::nullopt);
         if (fr.size() < 4) continue;
         uint16_t fid = be16(fr, 0);
         features_[fid] = {fid, static_cast<uint8_t>(i), fr[3], fr[2]};
@@ -319,8 +320,9 @@ std::pair<int, int> Device::currentHost() {
 }
 
 void Device::changeHost(int host) {
-    if (!has(CHANGE_HOST)) return;
-    auto [n, cur] = currentHost();
+    if (!has(CHANGE_HOST)) throw std::runtime_error("device cannot switch hosts");
+    int n = 3, cur = -1;
+    try { std::tie(n, cur) = currentHost(); } catch (const Timeout&) { /* asleep: send the switch anyway */ }
     if (host < 0 || host >= n) throw std::runtime_error("host index out of range");
     if (host == cur) return;
     req(CHANGE_HOST, 1, {static_cast<uint8_t>(host)}, true);
