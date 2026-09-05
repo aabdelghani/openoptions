@@ -1,5 +1,7 @@
 # OpenOptions
 
+[![Release build](https://github.com/aabdelghani/openoptions/actions/workflows/release.yml/badge.svg)](https://github.com/aabdelghani/openoptions/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/aabdelghani/openoptions?color=2dd4bf&label=release)](https://github.com/aabdelghani/openoptions/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2dd4bf.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-2dd4bf.svg)](#requirements)
 [![Agent: C++20](https://img.shields.io/badge/agent-C%2B%2B20-2dd4bf.svg)](agent)
@@ -116,7 +118,9 @@ Everything
 
 ## Install
 
-Packages are attached to each [release](https://github.com/aabdelghani/openoptions/releases).
+Packages are attached to each [release](https://github.com/aabdelghani/openoptions/releases). They are built
+on GitHub's runners by the [release workflow](https://github.com/aabdelghani/openoptions/actions/workflows/release.yml)
+every time a version tag is pushed, so each asset can be traced back to a public build log.
 
 **Debian / Ubuntu (.deb)**: agent, CLI, udev rule, systemd user unit, desktop entry and the app.
 
