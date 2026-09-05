@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenOptions agent for MX Master and MX Keys devices
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/openoptions-agent
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

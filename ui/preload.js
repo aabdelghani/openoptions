@@ -1,0 +1,25 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('agent', {
+  call: (method, params) => ipcRenderer.invoke('rpc', method, params || {}),
+  connected: () => ipcRenderer.invoke('agent-connected'),
+  onEvent: cb => ipcRenderer.on('agent-event', (_e, msg) => cb(msg)),
+  onStatus: cb => ipcRenderer.on('agent-status', (_e, st) => cb(st)),
+  saveJson: (name, data) => ipcRenderer.invoke('save-json', name, data),
+  openJson: () => ipcRenderer.invoke('open-json'),
+  openExternal: url => ipcRenderer.invoke('open-external', url),
+  openPath: p => ipcRenderer.invoke('open-path', p),
+  installUdev: () => ipcRenderer.invoke('install-udev'),
+  stopTool: name => ipcRenderer.invoke('stop-tool', name),
+  windowAction: a => ipcRenderer.invoke('window-action', a),
+  uiSettings: (patch) => ipcRenderer.invoke('ui-settings', patch || null),
+  copy: text => ipcRenderer.invoke('copy-text', text),
+  appInfo: () => ipcRenderer.invoke('app-info'),
+  osdTest: kind => ipcRenderer.invoke('osd-test', kind),
+  generalChanged: () => ipcRenderer.invoke('general-changed'),
+  setTheme: t => ipcRenderer.invoke('set-theme', t),
+  openBluetooth: () => ipcRenderer.invoke('open-bluetooth'),
+  checkUpdates: () => ipcRenderer.invoke('check-updates'),
+  trayPanel: () => ipcRenderer.invoke('tray-panel'),
+  screenInfo: () => ipcRenderer.invoke('screen-info'),
+});

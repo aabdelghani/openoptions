@@ -1,0 +1,7 @@
+agent/build/
+ui/node_modules/
+ui/package-lock.json
+__pycache__/
+*.pyc
+.venv/
+PLAN.md
