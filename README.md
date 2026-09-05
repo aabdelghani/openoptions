@@ -100,9 +100,9 @@ Everything
 |---|---|
 | ![Battery](screenshots/battery-info.png) | ![Notifications](screenshots/notifications.png) |
 
-| Emoji picker | |
+| Emoji picker | Tray status panel |
 |---|---|
-| ![Emoji picker](screenshots/emoji-picker.png) | |
+| ![Emoji picker](screenshots/emoji-picker.png) | ![Tray panel](screenshots/tray-panel.png) |
 
 | First run | Dark theme |
 |---|---|
