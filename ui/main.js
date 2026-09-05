@@ -2,6 +2,13 @@
 // keeps a tray indicator with battery levels and raises low battery notifications.
 const { app, BrowserWindow, ipcMain, nativeTheme, Tray, Menu, Notification, nativeImage, dialog, shell, clipboard, globalShortcut, screen } = require('electron');
 app.setName('OpenOptions');
+const PACKAGED = app.isPackaged;
+const APPIMAGE = process.env.APPIMAGE || '';
+const WM_CLASS = PACKAGED ? 'openoptions' : 'OpenOptions';
+// files shipped next to the app: repo root in development, resources/ in a package
+const resPath = (...p) => PACKAGED ? path.join(process.resourcesPath, ...p) : path.join(__dirname, '..', ...p);
+// how to launch this very app again (autostart, desktop entry)
+const launchCmd = () => APPIMAGE ? `"${APPIMAGE}"` : PACKAGED ? process.execPath : `${process.execPath} ${__dirname} --no-sandbox --class=OpenOptions`;
 const fs = require('fs');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
@@ -422,7 +429,7 @@ ipcMain.handle('stop-tool', async (_e, name) => {
   return { ok: false, error: 'unknown tool' };
 });
 ipcMain.handle('install-udev', async () => {
-  const rule = path.join(__dirname, '..', 'udev', '60-openoptions.rules');
+  const rule = resPath('udev', '60-openoptions.rules');
   if (!fs.existsSync(rule)) return { ok: false, error: 'rule file missing' };
   const script = `cp '${rule}' /etc/udev/rules.d/60-openoptions.rules && udevadm control --reload && udevadm trigger`;
   const r = await run('pkexec', ['sh', '-c', script]);
@@ -435,7 +442,7 @@ function setAutostart(on) {
   try { fs.mkdirSync(unitDir, { recursive: true }); fs.writeFileSync(path.join(unitDir, 'openoptions.service'), unit); } catch (e) { return; }
   execFile('systemctl', ['--user', 'daemon-reload'], () => execFile('systemctl', ['--user', on ? 'enable' : 'disable', 'openoptions.service'], () => {}));
   const autostartDir = path.join(os.homedir(), '.config', 'autostart'), desktop = path.join(autostartDir, 'openoptions.desktop');
-  if (on) { try { fs.mkdirSync(autostartDir, { recursive: true }); fs.writeFileSync(desktop, `[Desktop Entry]\nType=Application\nName=OpenOptions\nIcon=openoptions\nExec=${process.execPath} ${path.join(__dirname)} --no-sandbox --class=OpenOptions --hidden\nStartupWMClass=OpenOptions\nX-GNOME-Autostart-enabled=true\n`); } catch (e) {} }
+  if (on) { try { fs.mkdirSync(autostartDir, { recursive: true }); fs.writeFileSync(desktop, `[Desktop Entry]\nType=Application\nName=OpenOptions\nIcon=openoptions\nExec=${launchCmd()} --hidden\nStartupWMClass=${WM_CLASS}\nX-GNOME-Autostart-enabled=true\n`); } catch (e) {} }
   else { try { fs.unlinkSync(desktop); } catch (e) {} }
 }
 ipcMain.handle('open-bluetooth', () => { execFile('gnome-control-center', ['bluetooth'], () => execFile('systemsettings', ['kcm_bluetooth'], () => {})); });
@@ -463,20 +470,42 @@ if (!single) {
     updateTray();
   }
   function ensureDesktopEntry() {
+    if (PACKAGED && !APPIMAGE) return;   // the .deb installs its own entry
     try {
       const iconDir = path.join(os.homedir(), '.local', 'share', 'icons', 'hicolor', '256x256', 'apps');
       const appDir = path.join(os.homedir(), '.local', 'share', 'applications');
       fs.mkdirSync(iconDir, { recursive: true }); fs.mkdirSync(appDir, { recursive: true });
       const iconSrc = path.join(__dirname, 'assets', 'icon.png'), iconDst = path.join(iconDir, 'openoptions.png');
       if (!fs.existsSync(iconDst) || fs.statSync(iconDst).size !== fs.statSync(iconSrc).size) fs.copyFileSync(iconSrc, iconDst);
-      const entry = `[Desktop Entry]\nType=Application\nName=OpenOptions\nComment=Buttons, gestures, keys and Easy-Switch for MX mice and keyboards\nExec=${process.execPath} ${__dirname} --no-sandbox --class=OpenOptions\nIcon=openoptions\nTerminal=false\nCategories=Settings;HardwareSettings;\nKeywords=mouse;keyboard;MX;Bolt;\nStartupWMClass=OpenOptions\nStartupNotify=true\n`;
+      const entry = `[Desktop Entry]\nType=Application\nName=OpenOptions\nComment=Buttons, gestures, keys and Easy-Switch for MX mice and keyboards\nExec=${launchCmd()}\nIcon=openoptions\nTerminal=false\nCategories=Settings;HardwareSettings;\nKeywords=mouse;keyboard;MX;Bolt;\nStartupWMClass=${WM_CLASS}\nStartupNotify=true\n`;
       const dst = path.join(appDir, 'openoptions.desktop');
       let cur = ''; try { cur = fs.readFileSync(dst, 'utf8'); } catch (e) {}
       if (cur !== entry) { fs.writeFileSync(dst, entry); execFile('update-desktop-database', [appDir], () => {}); execFile('gtk-update-icon-cache', ['-f', '-t', path.join(os.homedir(), '.local', 'share', 'icons', 'hicolor')], () => {}); }
     } catch (e) {}
   }
+  let agentChild = null;
+  function agentCandidates() {
+    const c = [];
+    if (PACKAGED) c.push(resPath('agent', 'openoptions-agent'));
+    c.push('/usr/bin/openoptions-agent', '/usr/local/bin/openoptions-agent', path.join(os.homedir(), '.local', 'bin', 'openoptions-agent'));
+    return c.filter(p => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch (e) { return false; } });
+  }
+  function maybeStartAgent() {
+    if (!PACKAGED || connected || agentChild) return;
+    execFile('pgrep', ['-x', 'openoptions-age'], (err, out) => {
+      if (!err && String(out).trim()) return;                 // an agent exists, it just is not up yet
+      const bin = agentCandidates()[0];
+      if (!bin) return;
+      try {
+        agentChild = spawn(bin, [], { stdio: 'ignore' });
+        agentChild.on('exit', () => { agentChild = null; });
+      } catch (e) { agentChild = null; }
+    });
+  }
+  app.on('will-quit', () => { if (agentChild) { try { agentChild.kill(); } catch (e) {} } });
   app.whenReady().then(() => {
     ensureDesktopEntry();
+    setTimeout(maybeStartAgent, 1500);
     uiSettings = loadUi();
     if (uiSettings.tray !== false) createTray();
     connect();

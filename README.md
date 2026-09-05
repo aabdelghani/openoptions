@@ -117,6 +117,28 @@ Everything
 |---|---|
 | ![Ubuntu](screenshots/ubuntu-theme.png) | ![Applications](screenshots/applications.png) |
 
+## Install
+
+Packages are attached to each [release](https://github.com/aabdelghani/openoptions/releases).
+
+**Debian / Ubuntu (.deb)**: agent, CLI, udev rule, systemd user unit, desktop entry and the app.
+
+```
+sudo apt install ./openoptions_0.3.0_amd64.deb
+systemctl --user enable --now openoptions      # agent for the current session (automatic after the next login)
+openoptions                                    # or launch OpenOptions from the app grid
+```
+
+**AppImage**: one file, no installation. The app starts the bundled agent itself and the first-run
+wizard installs the udev rule with pkexec.
+
+```
+chmod +x OpenOptions-0.3.0-x86_64.AppImage
+./OpenOptions-0.3.0-x86_64.AppImage
+```
+
+Build the packages yourself with `packaging/deb/build.sh` and `cd ui && npm run dist:appimage`.
+
 ## Requirements
 
 - Linux with the kernel's HID++ receiver drivers (built into any mainstream distro)
@@ -129,7 +151,7 @@ Stop other tools that divert the same buttons (Solaar, logid) while OpenOptions 
 two programs fight over the device. On GNOME the tray icon needs the AppIndicator extension
 (`gnome-shell-extension-appindicator`), which Ubuntu ships enabled.
 
-## Quick start
+## Quick start (from source)
 
 ```
 ./run-agent.sh -v            # terminal 1: builds on first run, logs to stderr

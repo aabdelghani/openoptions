@@ -3,15 +3,70 @@
   "productName": "OpenOptions",
   "version": "0.3.0",
   "description": "OpenOptions: third-party configuration app for MX Master and MX Keys devices on Linux",
+  "homepage": "https://github.com/aabdelghani/openoptions",
+  "author": "aabdelghany",
+  "license": "MIT",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
-  },
-  "license": "MIT",
-  "devDependencies": {
-    "electron": "^33.0.0"
+    "start": "electron . --class=OpenOptions",
+    "dist:appimage": "electron-builder --linux AppImage --publish never",
+    "dist:dir": "electron-builder --linux dir --publish never"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.5.2"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "io.github.aabdelghani.openoptions",
+    "productName": "OpenOptions",
+    "executableName": "openoptions",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload-osd.js",
+      "preload-emoji.js",
+      "preload-tray.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../agent/build/openoptions-agent",
+        "to": "agent/openoptions-agent"
+      },
+      {
+        "from": "../agent/build/openoptionsctl",
+        "to": "agent/openoptionsctl"
+      },
+      {
+        "from": "../udev/60-openoptions.rules",
+        "to": "udev/60-openoptions.rules"
+      },
+      {
+        "from": "../systemd/openoptions.service",
+        "to": "systemd/openoptions.service"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "dir"
+      ],
+      "category": "Settings",
+      "icon": "assets/icon.png",
+      "synopsis": "Buttons, gestures, keys and Easy-Switch for MX mice and keyboards",
+      "desktop": {
+        "StartupWMClass": "openoptions",
+        "Keywords": "mouse;keyboard;MX;Bolt;"
+      },
+      "artifactName": "OpenOptions-${version}-${arch}.${ext}"
+    }
   }
 }

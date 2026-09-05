@@ -1,0 +1,37 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ libx11-dev libfuse2
+      - name: UI dependencies
+        run: cd ui && npm ci --no-audit --no-fund
+      - name: Debian package
+        run: packaging/deb/build.sh
+      - name: AppImage
+        run: cd ui && npx electron-builder --linux AppImage --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dist/*.deb
+            ui/dist/*.AppImage
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.deb
+            ui/dist/*.AppImage
