@@ -188,7 +188,7 @@ Configuration lives in `~/.config/openoptions/config.json`. Device ids are the p
 ## Status
 
 Tested on Ubuntu 24.04 with GNOME on X11, MX Master 3S and MX Keys S on a Bolt receiver.
-Bluetooth connections use the same code path but have had less testing. GNOME on Wayland
+Bluetooth connections work the same way as the receiver (tested with the MX Keys S paired directly). GNOME on Wayland
 tracks the focused application through the Shell introspection interface when it is enabled.
 
 Planned: more MX devices, pairing UI, KDE and Sway focus tracking, packaging.
