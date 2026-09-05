@@ -709,14 +709,35 @@ void Daemon::onReceiverNotification(hidpp::Transport& t, const hidpp::Notificati
                 p.insert(p.end(), pair_.address.begin(), pair_.address.end());
                 p.push_back(pair_.authentication);
                 p.push_back(pair_.kind == 1 ? 20 : 10);
-                std::thread([this, tp = &t, p] { try { tp->request10(0xFF, 0x82, 0xC1, p, true); } catch (const std::exception& e) { std::lock_guard<std::mutex> l(pairMutex_); pair_.error = std::string("pair request failed: ") + e.what(); pairBroadcast("error"); } }).detach();
+                // a slot still holding an older pairing of the same product (re-pair after a Bluetooth
+                // detour, for example) makes the receiver refuse the new one: release it first
+                uint8_t wantKind = pair_.kind;
+                std::thread([this, tp = &t, p, wantKind] {
+                    try {
+                        for (uint8_t slot = 1; slot <= 6; ++slot) {
+                            auto pi = tp->pairingInfo(slot);
+                            if (!pi || pi->kind != wantKind) continue;
+                            bool alive = false;
+                            for (auto& md : snapshot()) if (&md->transport() == tp && md->dev().index() == slot) alive = linkAlive(*md);
+                            if (alive) continue;   // a live unit of the same kind: leave it alone
+                            INFO("pairing: releasing slot %d (stale %s pairing, wpid %04x) before re-pairing", slot, kindName(pi->kind), pi->wpid);
+                            try { tp->request10(0xFF, 0x82, 0xC1, {0x03, slot}, true); } catch (...) {}
+                        }
+                        tp->request10(0xFF, 0x82, 0xC1, p, true);
+                    } catch (const std::exception& e) { std::lock_guard<std::mutex> l(pairMutex_); pair_.error = std::string("pair request failed: ") + e.what(); pairBroadcast("error"); }
+                }).detach();
             }
             break;
         }
         case 0x54: {  // pairing status
             pair_.lockOpen = n.address == 0x00;
             uint8_t err = d.empty() ? 0 : d[0];
-            if (err) { pair_.error = err == 1 ? "Device did not answer in time" : "Pairing failed"; pair_.active = false; pairBroadcast("error"); break; }
+            if (err) {
+                static const char* kErr[] = {"", "the device did not answer in time", "pairing failed", "the receiver refused (too many devices or a stale pairing)", "the device declined", "wrong passkey"};
+                pair_.error = std::string("Pairing failed: ") + (err < 6 ? kErr[err] : "receiver error " + std::to_string(err));
+                INFO("pairing: status error %d", err);
+                pair_.active = false; pairBroadcast("error"); break;
+            }
             if (n.address == 0x02) { pair_.doneName = pair_.name.empty() ? "Device" : pair_.name; pair_.active = false; INFO("pairing: %s paired as device %d", pair_.doneName.c_str(), d.size() > 7 ? d[7] : 0); pairBroadcast("done"); }
             else pairBroadcast(pair_.lockOpen ? "pairing" : "lock_closed");
             break;
