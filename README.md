@@ -21,6 +21,11 @@ part of this repository under its license.
 
 A native agent owns the devices in the background; the desktop UI talks to it over a local socket.
 
+![Architecture](docs/architecture.png)
+
+The diagram source is [docs/architecture.drawio](docs/architecture.drawio) (open it with draw.io / diagrams.net);
+an SVG export is in [docs/architecture.svg](docs/architecture.svg).
+
 ```
 agent/          C++20 agent. HID++ 1.0/2.0 over hidraw, uinput for actions, X11 focus tracking,
                 JSON RPC over a UNIX socket. No runtime dependencies beyond libc, libstdc++, libX11.
