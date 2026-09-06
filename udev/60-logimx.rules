@@ -1,4 +1,4 @@
-# OpenOptions: let the logged-in user talk HID++ to MX receivers/devices (vendor 046d) and use uinput
+# LogiMX: let the logged-in user talk HID++ to MX receivers/devices (vendor 046d) and use uinput
 ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess", GROUP="input", MODE="0660"
 ACTION=="add", SUBSYSTEM=="hidraw", KERNELS=="*:046D:*", TAG+="uaccess", GROUP="input", MODE="0660"
 KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput", GROUP="input", MODE="0660"

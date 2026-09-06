@@ -854,7 +854,12 @@ static std::string statePath(const std::string& name) {
     const char* xs = getenv("XDG_STATE_HOME");
     std::string base = xs && *xs ? xs : std::string(getenv("HOME") ? getenv("HOME") : "/tmp") + "/.local/state";
     mkdir(base.c_str(), 0755);
-    std::string dir = base + "/openoptions";
+    std::string dir = base + "/logimx";
+    struct stat st{};
+    if (stat(dir.c_str(), &st) != 0 && stat((base + "/openoptions").c_str(), &st) == 0) {
+        std::string cmd = "cp -a '" + base + "/openoptions' '" + dir + "' 2>/dev/null";   // pre-0.4 name
+        if (std::system(cmd.c_str()) != 0) { /* best effort */ }
+    }
     mkdir(dir.c_str(), 0755);
     return dir + "/" + name;
 }

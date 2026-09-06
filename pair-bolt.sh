@@ -16,10 +16,10 @@ trap restore EXIT INT TERM
 exec python3 - <<'PY'
 import sys, os, json, time, socket, subprocess
 sys.path.insert(0, '.')
-from openoptions.ipc import Client
+from logimx.ipc import Client
 
 def notify(t, b, u='normal'):
-    subprocess.run(['notify-send', '-a', 'OpenOptions', '-u', u, '-t', '40000', t, b],
+    subprocess.run(['notify-send', '-a', 'LogiMX', '-u', u, '-t', '40000', t, b],
                    stderr=subprocess.DEVNULL)
 
 c = Client()
@@ -27,7 +27,7 @@ try: c.call('pair_cancel')
 except Exception: pass
 
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.connect(os.environ.get('XDG_RUNTIME_DIR', '/run/user/1000') + '/openoptions.sock')
+s.connect(os.environ.get('XDG_RUNTIME_DIR', '/run/user/1000') + '/logimx.sock')
 s.settimeout(1.0)
 
 print()

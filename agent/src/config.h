@@ -1,4 +1,4 @@
-// ~/.config/openoptions/config.json
+// ~/.config/logimx/config.json
 #pragma once
 #include <mutex>
 #include <string>

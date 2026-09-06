@@ -38,7 +38,7 @@ Injector::Injector() {
     us.id.vendor = 0x046d;
     us.id.product = 0x0001;
     us.id.version = 1;
-    strncpy(us.name, "OpenOptions virtual input", UINPUT_MAX_NAME_SIZE - 1);
+    strncpy(us.name, "LogiMX virtual input", UINPUT_MAX_NAME_SIZE - 1);
     if (ioctl(fd_, UI_DEV_SETUP, &us) < 0 || ioctl(fd_, UI_DEV_CREATE) < 0)
         throw std::runtime_error(std::string("uinput setup: ") + strerror(errno));
     std::this_thread::sleep_for(std::chrono::milliseconds(200));  // let the desktop pick the device up

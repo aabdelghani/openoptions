@@ -1,7 +1,7 @@
-# OpenOptions
+# LogiMX
 
-[![Release build](https://github.com/aabdelghani/openoptions/actions/workflows/release.yml/badge.svg)](https://github.com/aabdelghani/openoptions/actions/workflows/release.yml)
-[![Latest release](https://img.shields.io/github/v/release/aabdelghani/openoptions?color=2dd4bf&label=release)](https://github.com/aabdelghani/openoptions/releases/latest)
+[![Release build](https://github.com/aabdelghani/logimx/actions/workflows/release.yml/badge.svg)](https://github.com/aabdelghani/logimx/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/aabdelghani/logimx?color=2dd4bf&label=release)](https://github.com/aabdelghani/logimx/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2dd4bf.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/platform-Linux-2dd4bf.svg)](#requirements)
 [![Agent: C++20](https://img.shields.io/badge/agent-C%2B%2B20-2dd4bf.svg)](agent)
@@ -13,7 +13,7 @@ device configuration to GNOME, KDE and other desktops: button and key assignment
 thumb wheel actions, SmartShift, DPI, smart backlighting, Easy-Switch and per-application
 profiles.
 
-OpenOptions is an independent project. It is not affiliated with, endorsed by, or supported by
+LogiMX is an independent project. It is not affiliated with, endorsed by, or supported by
 the manufacturer of these devices. The device pictures in the app are the author's own and are
 part of this repository under its license.
 
@@ -29,7 +29,7 @@ A native agent owns the devices in the background; the desktop UI talks to it ov
 agent/          C++20 agent. HID++ 1.0/2.0 over hidraw, uinput for actions, X11 focus tracking,
                 JSON RPC over a UNIX socket. No runtime dependencies beyond libc, libstdc++, libX11.
 ui/             Electron UI, plain HTML/CSS/JS, talks to the agent over the socket.
-openoptions/    Python implementation of the same agent (same RPC and config schema). It was
+logimx/    Python implementation of the same agent (same RPC and config schema). It was
                 written first to validate the protocol against real hardware and is kept as a
                 reference and for scripting.
 udev/           hidraw and uinput access rule.
@@ -118,24 +118,24 @@ Everything
 
 ## Install
 
-Packages are attached to each [release](https://github.com/aabdelghani/openoptions/releases). They are built
-on GitHub's runners by the [release workflow](https://github.com/aabdelghani/openoptions/actions/workflows/release.yml)
+Packages are attached to each [release](https://github.com/aabdelghani/logimx/releases). They are built
+on GitHub's runners by the [release workflow](https://github.com/aabdelghani/logimx/actions/workflows/release.yml)
 every time a version tag is pushed, so each asset can be traced back to a public build log.
 
 **Debian / Ubuntu (.deb)**: agent, CLI, udev rule, systemd user unit, desktop entry and the app.
 
 ```
-sudo apt install ./openoptions_0.3.0_amd64.deb
-systemctl --user enable --now openoptions      # agent for the current session (automatic after the next login)
-openoptions                                    # or launch OpenOptions from the app grid
+sudo apt install ./logimx_0.3.0_amd64.deb
+systemctl --user enable --now logimx      # agent for the current session (automatic after the next login)
+logimx                                    # or launch LogiMX from the app grid
 ```
 
 **AppImage**: one file, no installation. The app starts the bundled agent itself and the first-run
 wizard installs the udev rule with pkexec.
 
 ```
-chmod +x OpenOptions-0.3.0-x86_64.AppImage
-./OpenOptions-0.3.0-x86_64.AppImage
+chmod +x LogiMX-0.3.0-x86_64.AppImage
+./LogiMX-0.3.0-x86_64.AppImage
 ```
 
 Build the packages yourself with `packaging/deb/build.sh` and `cd ui && npm run dist:appimage`.
@@ -146,9 +146,9 @@ Build the packages yourself with `packaging/deb/build.sh` and `cd ui && npm run 
 - g++ 11 or newer, cmake, ninja, libx11-dev
 - node 18 or newer for the UI
 - Read and write access to `/dev/hidraw*` for the receiver and to `/dev/uinput`
-  (`udev/60-openoptions.rules`, or the rule that ships with Solaar)
+  (`udev/60-logimx.rules`, or the rule that ships with Solaar)
 
-Stop other tools that divert the same buttons (Solaar, logid) while OpenOptions runs, otherwise
+Stop other tools that divert the same buttons (Solaar, logid) while LogiMX runs, otherwise
 two programs fight over the device. On GNOME the tray icon needs the AppIndicator extension
 (`gnome-shell-extension-appindicator`), which Ubuntu ships enabled.
 
@@ -157,14 +157,14 @@ two programs fight over the device. On GNOME the tray icon needs the AppIndicato
 ```
 ./run-agent.sh -v            # terminal 1: builds on first run, logs to stderr
 ./run-ui.sh                  # terminal 2: window and tray icon (--hidden starts in the tray)
-./agent/build/openoptionsctl devices
+./agent/build/logimxctl devices
 ```
 
 Install for the current user (agent in `~/.local/bin`, systemd user service):
 
 ```
 ./install.sh
-sudo cp udev/60-openoptions.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+sudo cp udev/60-logimx.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 ```
 
 ## Pairing to the receiver
@@ -184,19 +184,19 @@ restores Bluetooth on exit.
 ## Command line
 
 ```
-openoptionsctl devices
-openoptionsctl set b034 dpi 1600
-openoptionsctl set b034 smartshift.threshold 20
-openoptionsctl set b378 backlight.mode manual
-openoptionsctl set b378 backlight.level 5
-openoptionsctl assign b034 buttons 195 gesture_windows
-openoptionsctl assign b034 thumbwheel - volume_wheel
-openoptionsctl assign b378 keys 264 emoji_picker
-openoptionsctl host b378 2
-openoptionsctl presets
+logimxctl devices
+logimxctl set b034 dpi 1600
+logimxctl set b034 smartshift.threshold 20
+logimxctl set b378 backlight.mode manual
+logimxctl set b378 backlight.level 5
+logimxctl assign b034 buttons 195 gesture_windows
+logimxctl assign b034 thumbwheel - volume_wheel
+logimxctl assign b378 keys 264 emoji_picker
+logimxctl host b378 2
+logimxctl presets
 ```
 
-Configuration lives in `~/.config/openoptions/config.json`. Device ids are the product ids
+Configuration lives in `~/.config/logimx/config.json`. Device ids are the product ids
 (`b034` MX Master 3S, `b378` MX Keys S), controls are HID++ control ids.
 
 ## Status
@@ -213,7 +213,7 @@ Planned: more MX devices, pairing UI, KDE and Sway focus tracking, packaging.
 - [logiops](https://github.com/PixlOne/logiops): daemon with gestures and SmartShift, configured through a text file
 - [libratbag](https://github.com/libratbag/libratbag) and Piper: DPI and button configuration for gaming mice
 
-OpenOptions differs by pairing a native agent with a full desktop UI, per-application profiles
+LogiMX differs by pairing a native agent with a full desktop UI, per-application profiles
 and a gesture editor, so the day-to-day experience matches what users get on Windows and macOS.
 
 ## Keywords

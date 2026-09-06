@@ -23,7 +23,7 @@ def _all_keys():
 
 
 class Injector:
-    def __init__(self, name: str = "OpenOptions virtual input"):
+    def __init__(self, name: str = "LogiMX virtual input"):
         caps = {
             e.EV_KEY: _all_keys(),
             e.EV_REL: [e.REL_X, e.REL_Y, e.REL_WHEEL, e.REL_HWHEEL, e.REL_WHEEL_HI_RES, e.REL_HWHEEL_HI_RES],

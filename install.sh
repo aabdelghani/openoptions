@@ -6,9 +6,9 @@ cd "$(dirname "$0")"
 cmake -B agent/build -S agent -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build agent/build
 mkdir -p ~/.local/bin ~/.config/systemd/user
-cp agent/build/openoptions-agent agent/build/openoptionsctl ~/.local/bin/
-cp systemd/openoptions.service ~/.config/systemd/user/
+cp agent/build/logimx-agent agent/build/logimxctl ~/.local/bin/
+cp systemd/logimx.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now openoptions.service
+systemctl --user enable --now logimx.service
 echo "Agent installed and started. For hidraw/uinput access without Solaar's rules run:"
-echo "  sudo cp udev/60-openoptions.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger"
+echo "  sudo cp udev/60-logimx.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger"

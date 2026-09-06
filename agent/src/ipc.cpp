@@ -15,7 +15,7 @@ namespace ipc {
 std::string defaultSocketPath() {
     const char* rt = getenv("XDG_RUNTIME_DIR");
     std::string base = rt && *rt ? rt : "/run/user/" + std::to_string(getuid());
-    return base + "/openoptions.sock";
+    return base + "/logimx.sock";
 }
 
 static bool writeAll(int fd, const std::string& s) {

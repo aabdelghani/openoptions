@@ -1,4 +1,4 @@
-"""openoptions command line client."""
+"""logimx command line client."""
 from __future__ import annotations
 
 import argparse
@@ -34,7 +34,7 @@ def fmt_device(d: dict):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="openoptions", description="Configure MX Master and MX Keys devices")
+    ap = argparse.ArgumentParser(prog="logimx", description="Configure MX Master and MX Keys devices")
     sub = ap.add_subparsers(dest="cmd")
     sub.add_parser("status")
     sub.add_parser("devices")
@@ -54,7 +54,7 @@ def main(argv=None):
     try:
         c = Client()
     except OSError:
-        print("daemon not running (start with: python -m openoptions.daemon)", file=sys.stderr); return 1
+        print("daemon not running (start with: python -m logimx.daemon)", file=sys.stderr); return 1
 
     def parse_value(v: str):
         try:

@@ -1,4 +1,4 @@
-"""Configuration model: ~/.config/openoptions/config.json
+"""Configuration model: ~/.config/logimx/config.json
 
 {
   "devices": {
@@ -19,7 +19,7 @@ import os
 import threading
 from copy import deepcopy
 
-CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "openoptions")
+CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "logimx")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 # Control ids (0x1B04) used by the two reference devices

@@ -1,4 +1,4 @@
-"""openoptionsd: owns the devices, applies settings, turns events into actions,
+"""logimxd: owns the devices, applies settings, turns events into actions,
 and serves the UI / CLI over a local socket.
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ from .hidpp import discovery, protocol
 from .hidpp.protocol import Device
 from .hidpp.transport import HidppError, Notification, Timeout, Transport
 
-log = logging.getLogger("openoptions")
+log = logging.getLogger("logimx")
 
 
 class ManagedDevice:

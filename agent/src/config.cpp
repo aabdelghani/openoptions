@@ -27,10 +27,22 @@ std::string Config::key(uint16_t pid) {
     return b;
 }
 
+// The project was called openoptions before 0.4. Carry a configuration over once so an upgrade
+// keeps every assignment, profile and backup.
+static void migrateFromOldName(const std::string& base, const std::string& newDir) {
+    std::string oldDir = base + "/openoptions";
+    struct stat st{};
+    if (stat(newDir.c_str(), &st) == 0) return;          // already on the new path
+    if (stat(oldDir.c_str(), &st) != 0) return;          // nothing to carry over
+    std::string cmd = "cp -a '" + oldDir + "' '" + newDir + "' 2>/dev/null";
+    if (std::system(cmd.c_str()) != 0) { /* best effort */ }
+}
+
 Config::Config() {
     const char* xdg = getenv("XDG_CONFIG_HOME");
     std::string base = xdg && *xdg ? xdg : std::string(getenv("HOME") ? getenv("HOME") : "/tmp") + "/.config";
-    path_ = base + "/openoptions/config.json";
+    migrateFromOldName(base, base + "/logimx");
+    path_ = base + "/logimx/config.json";
     data_ = {{"devices", json::object()}, {"general", {{"desktop", "gnome"}}}};
     load();
 }

@@ -1,4 +1,4 @@
-/* OpenOptions renderer. One state object, full re-render on change, Adwaita-style layout. */
+/* LogiMX renderer. One state object, full re-render on change, Adwaita-style layout. */
 (() => {
   const $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -144,7 +144,7 @@
 
   function renderWindow() {
     const d = dev();
-    const title = S.appDetail ? (S.appDetail.name || 'Application') : (PAGES[S.page] ? PAGES[S.page][0] : 'OpenOptions');
+    const title = S.appDetail ? (S.appDetail.name || 'Application') : (PAGES[S.page] ? PAGES[S.page][0] : 'LogiMX');
     let nav = '';
     for (const x of S.devices) {
       const b = x.battery;
@@ -158,7 +158,7 @@
     const cname = conflict ? S.conflicts[0].name : '';
     return `<div class="window">
       <aside class="side">
-        <div class="brand"><span class="mark"><i class="fa-solid fa-computer-mouse"></i></span>OpenOptions</div>
+        <div class="brand"><span class="mark"><i class="fa-solid fa-computer-mouse"></i></span>LogiMX</div>
         <nav class="nav">${nav}</nav>
         <div class="side-foot ${S.connected ? '' : 'off'}"><i class="fa-solid fa-circle"></i><span class="grow">${S.connected ? 'Agent connected' : S.agentBusy ? 'Starting the agent…' : 'Agent not running'} · v${S.status.version || VERSION}</span>${S.connected || S.agentBusy ? '' : '<button class="btn sm" data-act="start-agent">Start</button>'}</div>
       </aside>
@@ -186,7 +186,7 @@
     <button data-act="pause"><i class="fa-solid ${S.status.paused ? 'fa-play' : 'fa-pause'}"></i>${S.status.paused ? 'Resume diversion' : 'Pause diversion'}</button>
     <div class="sep"></div>
     <button data-act="page" data-page="settings"><i class="fa-solid fa-sliders"></i>Settings</button>
-    <button data-act="page" data-page="about"><i class="fa-solid fa-circle-info"></i>About OpenOptions</button>
+    <button data-act="page" data-page="about"><i class="fa-solid fa-circle-info"></i>About LogiMX</button>
     <div class="sep"></div>
     <button data-act="quit"><i class="fa-solid fa-power-off"></i>Quit</button></div>`;
 
@@ -411,7 +411,7 @@
   }
 
   function pageBackup() {
-    const cfg = S.status.config_path || '~/.config/openoptions/config.json';
+    const cfg = S.status.config_path || '~/.config/logimx/config.json';
     const n = S.devices.length, np = allProfiles().length;
     return sec('Configuration file', card(row(esc(cfg), `${n} device${n === 1 ? '' : 's'} · ${np} app profile${np === 1 ? '' : 's'}`, `<button class="btn sm" data-act="show-config"><i class="fa-solid fa-folder-open"></i>Show</button>`) +
         `<div class="row" style="gap:8px"><button class="btn" data-act="export"><i class="fa-solid fa-download"></i>Export…</button><button class="btn" data-act="import"><i class="fa-solid fa-upload"></i>Import…</button><span class="grow"></span><button class="btn danger" data-act="reset-all">Reset all</button></div>`)) +
@@ -428,13 +428,13 @@
       sec('General', card(`<div class="row"><span class="grow lbl">Appearance</span><select class="sel" data-act="theme-select">${THEMES.map(([k, l]) => `<option value="${k}" ${S.theme === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` +
         row('Language', '', '<span class="val">System (English)</span>') +
         `<div class="row"><div class="grow"><div class="lbl">Check for updates</div><div class="sub">Looks at the GitHub release feed</div></div><button class="btn sm" data-act="check-updates">Check now</button>${sw(u.updates !== false, 'data-act="ui" data-key="updates"')}</div>`)) +
-      sec('Privacy', card(row('Telemetry', 'Off. OpenOptions never sends data anywhere.', '<span class="val">Not available</span>')));
+      sec('Privacy', card(row('Telemetry', 'Off. LogiMX never sends data anywhere.', '<span class="val">Not available</span>')));
   }
 
   function pageAbout() {
-    const links = [['fa-book', 'Documentation', 'https://github.com/aabdelghani/openoptions#readme'], ['fa-code-branch', 'Source code', 'https://github.com/aabdelghani/openoptions'], ['fa-bug', 'Report an issue', 'https://github.com/aabdelghani/openoptions/issues'], ['fa-heart', 'Contributors', 'https://github.com/aabdelghani/openoptions/graphs/contributors']];
+    const links = [['fa-book', 'Documentation', 'https://github.com/aabdelghani/logimx#readme'], ['fa-code-branch', 'Source code', 'https://github.com/aabdelghani/logimx'], ['fa-bug', 'Report an issue', 'https://github.com/aabdelghani/logimx/issues'], ['fa-heart', 'Contributors', 'https://github.com/aabdelghani/logimx/graphs/contributors']];
     const logs = S.logs.length ? S.logs : [{ t: `${new Date().toLocaleTimeString()} INFO  agent ${S.connected ? 'connected' : 'not running'} · ${S.devices.length} device(s) · tracker ${S.status.tracker || 'n/a'}`, c: 'dim' }];
-    return `<div class="card about-hero"><span class="mark"><i class="fa-solid fa-computer-mouse"></i></span><div class="name">OpenOptions</div><div class="hint">Configuration for MX mice and keyboards on Linux</div><div class="tags"><span>v${S.status.version || VERSION}</span><span>MIT</span><span>${S.appInfo.packaged ? 'Packaged' : 'Source'}</span></div></div>` +
+    return `<div class="card about-hero"><span class="mark"><i class="fa-solid fa-computer-mouse"></i></span><div class="name">LogiMX</div><div class="hint">Configuration for MX mice and keyboards on Linux</div><div class="tags"><span>v${S.status.version || VERSION}</span><span>MIT</span><span>${S.appInfo.packaged ? 'Packaged' : 'Source'}</span></div></div>` +
       card(links.map(([i, l, u]) => `<div class="row click" data-act="open" data-url="${u}"><i class="fa-solid ${i}" style="width:20px;text-align:center;color:var(--dim)"></i><span class="grow lbl">${l}</span><i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--dim);font-size:11px"></i></div>`).join('')) +
       sec('Diagnostics', card(`<div class="logs">${logs.map(l => `<span class="${l.c || 'dim'}">${esc(l.t)}</span>`).join('')}</div>`) + `<div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="export-diag"><i class="fa-solid fa-file-zipper"></i>Export diagnostics</button><button class="btn" data-act="copy-diag"><i class="fa-solid fa-copy"></i>Copy</button></div>`, `<button class="btn sm flat" data-act="refresh-logs">Refresh</button>`);
   }
@@ -525,7 +525,7 @@
     const c = S.conflicts[0], needsBuild = agentNeedsBuild();
     const booting = !S.ready || (S.connected && !S.loaded);
     return `<div class="window"><main class="main empty-wrap">
-      <header class="hb"><span class="title">OpenOptions</span><div class="right"><div style="position:relative"><button class="hbtn icon" data-act="menu-theme"><i class="fa-solid ${S.theme.includes('dark') ? 'fa-moon' : 'fa-sun'}"></i></button>${S.menu === 'theme' ? themeMenu() : ''}</div><button class="hbtn close" data-act="win-close"><i class="fa-solid fa-xmark"></i></button></div></header>
+      <header class="hb"><span class="title">LogiMX</span><div class="right"><div style="position:relative"><button class="hbtn icon" data-act="menu-theme"><i class="fa-solid ${S.theme.includes('dark') ? 'fa-moon' : 'fa-sun'}"></i></button>${S.menu === 'theme' ? themeMenu() : ''}</div><button class="hbtn close" data-act="win-close"><i class="fa-solid fa-xmark"></i></button></div></header>
       ${c ? `<div class="banner"><i class="fa-solid fa-triangle-exclamation"></i><span><strong>${esc(c.name)} is running.</strong> Two programs diverting the same buttons will fight over the device.</span><button class="bact" data-act="stop-tool" data-tool="${esc(c.name)}">Stop ${esc(c.name)}</button></div>` : ''}
       <div class="empty"><div class="ring"><i class="${booting || S.agentBusy ? 'fa-solid fa-spinner fa-spin' : S.connected ? 'fa-brands fa-usb' : 'fa-solid fa-power-off'}"></i></div>
         <div class="t">${booting ? 'Looking for devices…' : S.connected ? 'No devices found' : S.agentBusy ? esc(S.buildStep || 'Starting the agent…') : 'Agent not running'}</div>
@@ -547,10 +547,10 @@
     if (o.step === 1) {
       const agentOk = S.connected, devOk = S.devices.length > 0;
       const conf = S.conflicts.length;
-      body = `<div><h1>Permissions</h1><div class="lead">OpenOptions talks to devices over HID and emits keys through uinput. Both need a one-time udev rule.</div></div>
+      body = `<div><h1>Permissions</h1><div class="lead">LogiMX talks to devices over HID and emits keys through uinput. Both need a one-time udev rule.</div></div>
         ${card(`<div class="row">${agentOk ? '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>' : '<span class="mark-n">1</span>'}<div class="grow"><div class="lbl">Background agent</div><div class="sub">${agentOk ? 'Running' : S.agentBusy ? 'Starting…' : esc(S.agentErr || 'Not running yet')}</div></div>${agentOk || S.agentBusy ? '' : `<button class="btn sm" data-act="start-agent">${agentNeedsBuild() ? 'Build and start' : 'Start now'}</button>`}</div>
-          <div class="row">${devOk ? '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>' : '<span class="mark-n">2</span>'}<div class="grow"><div class="lbl">Access to /dev/hidraw* and /dev/uinput</div>${devOk ? '' : '<code class="cmd">sudo cp udev/60-openoptions.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger</code>'}</div></div>
-          <div class="row">${conf ? '<span class="mark-n">3</span>' : '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>'}<div class="grow"><div class="lbl">Stop Solaar or logid while OpenOptions runs</div>${conf ? `<div class="sub">${esc(S.conflicts.map(c => c.name).join(', '))} is running</div>` : ''}</div>${conf ? `<button class="btn sm" data-act="stop-tool" data-tool="${esc(S.conflicts[0].name)}">Stop</button>` : ''}</div>`)}
+          <div class="row">${devOk ? '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>' : '<span class="mark-n">2</span>'}<div class="grow"><div class="lbl">Access to /dev/hidraw* and /dev/uinput</div>${devOk ? '' : '<code class="cmd">sudo cp udev/60-logimx.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger</code>'}</div></div>
+          <div class="row">${conf ? '<span class="mark-n">3</span>' : '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>'}<div class="grow"><div class="lbl">Stop Solaar or logid while LogiMX runs</div>${conf ? `<div class="sub">${esc(S.conflicts.map(c => c.name).join(', '))} is running</div>` : ''}</div>${conf ? `<button class="btn sm" data-act="stop-tool" data-tool="${esc(S.conflicts[0].name)}">Stop</button>` : ''}</div>`)}
         ${devOk ? '' : '<div><button class="btn primary" data-act="install-udev"><i class="fa-solid fa-shield-halved"></i>Install rule with pkexec</button></div>'}`;
     } else if (o.step === 2) {
       body = `<div><h1>Your devices</h1><div class="lead">${S.devices.length ? 'Found on the receiver.' : 'No devices yet. Switch a device on or plug in the receiver.'}</div></div>
@@ -561,7 +561,7 @@
       body = `<div><h1>Pick a preset</h1><div class="lead">A starting point for buttons, gestures and F-keys. Everything can be changed later.</div></div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${presets.map(([k, i, n, d]) => `<button class="choice ${o.preset === k ? 'on' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px" data-act="ob-preset" data-key="${k}"><i class="fa-brands ${i}" style="font-size:22px;color:${o.preset === k ? 'var(--acc)' : 'var(--dim)'}"></i><span style="font-weight:600">${n}</span><span class="sub">${d}</span></button>`).join('')}</div>`;
     }
-    return `<div class="window"><main class="main"><header class="hb"><span class="title">Welcome to OpenOptions</span><div class="right"><button class="hbtn close" data-act="ob-close"><i class="fa-solid fa-xmark"></i></button></div></header>
+    return `<div class="window"><main class="main"><header class="hb"><span class="title">Welcome to LogiMX</span><div class="right"><button class="hbtn close" data-act="ob-close"><i class="fa-solid fa-xmark"></i></button></div></header>
       <div class="onboard"><div class="steps-col">${steps}<div class="hint" style="margin-top:auto">Step ${o.step} of 3</div></div>
       <div class="ob-body">${body}<div class="ob-foot"><button class="btn" data-act="ob-prev" ${o.step === 1 ? 'disabled' : ''}>Back</button><button class="btn primary" data-act="ob-next">${o.step === 3 ? 'Finish' : 'Continue'}</button></div></div></div></main></div>`;
   }
@@ -705,10 +705,10 @@
       case 'rename-profile': prompt('Rename profile', [{ key: 'name', label: 'Name', value: (S.appDetail || {}).name }], async v => { for (const dd of S.devices) { const profs = JSON.parse(JSON.stringify(dd.config.profiles)); if (profs[key]) { profs[key].name = v.name; merge(await call('set_profiles', { id: dd.id, profiles: profs })); } } S.appDetail.name = v.name; render(); }, 'Rename'); return;
       case 'del-profile': { if (!confirm('Remove this profile on all devices?')) return; for (const dd of S.devices) { const profs = JSON.parse(JSON.stringify(dd.config.profiles)); if (profs[key]) { delete profs[key]; merge(await call('set_profiles', { id: dd.id, profiles: profs })); } } S.appDetail = null; render(); return; }
       case 'ov-reset': { const dd = S.devices.find(x => x.id === b.dataset.dev); const profs = JSON.parse(JSON.stringify(dd.config.profiles)); const sect = profs[b.dataset.profile][b.dataset.section]; if (sect) delete sect[b.dataset.cid]; merge(await call('set_profiles', { id: dd.id, profiles: profs })); render(); return; }
-      case 'export': { const cfg = await call('export_config'); const p = await window.agent.saveJson('openoptions-settings.json', cfg); if (p) toast('Saved ' + p); S.menu = null; return; }
+      case 'export': { const cfg = await call('export_config'); const p = await window.agent.saveJson('logimx-settings.json', cfg); if (p) toast('Saved ' + p); S.menu = null; return; }
       case 'import': { const cfg = await window.agent.openJson(); if (!cfg) return; await call('import_config', { config: cfg }); toast('Settings imported'); S.menu = null; refresh(); return; }
       case 'reset-all': { if (!confirm('Reset every device to default settings and assignments?')) return; for (const dd of S.devices) merge(await call('reset_device', { id: dd.id })); toast('Reset to defaults'); render(); return; }
-      case 'show-config': window.agent.openPath(S.status.config_path || '~/.config/openoptions'); return;
+      case 'show-config': window.agent.openPath(S.status.config_path || '~/.config/logimx'); return;
       case 'sync-device': { const dd = S.devices.find(x => x.id === key); try { merge(await call('sync_from_device', { id: key })); toast(`${dd.name}: settings read from device`); } catch (x) { merge(await call('device', { id: key })); } render(); return; }
       case 'restore-backup': { if (!confirm('Restore this backup? Current settings are backed up first.')) return; await call('restore_backup', { file: key }); toast('Backup restored'); refresh(); return; }
       case 'create-backup': { await call('create_backup', { note: 'Manual' }); S.backups = await call('list_backups'); toast('Backup written'); render(); return; }
@@ -721,7 +721,7 @@
       case 'pair-confirm': { try { await call('pair_confirm', { address: key }); S.pair.step = 3; S.pair.done = 'Pairing… the device joins when it confirms'; } catch (x) { S.pair.error = x.message; } render(); return; }
       case 'pair-cancel': call('pair_cancel').catch(() => {}); S.dlg = null; render(); return;
       case 'prompt-ok': { const p = S.prompt; const vals = {}; for (const f of p.fields) vals[f.key] = f.value || ''; S.dlg = null; await p.onOk(vals); return; }
-      case 'export-diag': { const diag = { status: S.status, devices: S.devices, config: await call('export_config'), logs: S.logs, ui: S.ui, when: new Date().toISOString() }; const p = await window.agent.saveJson('openoptions-diagnostics.json', diag); if (p) toast('Saved ' + p); return; }
+      case 'export-diag': { const diag = { status: S.status, devices: S.devices, config: await call('export_config'), logs: S.logs, ui: S.ui, when: new Date().toISOString() }; const p = await window.agent.saveJson('logimx-diagnostics.json', diag); if (p) toast('Saved ' + p); return; }
       case 'copy-diag': window.agent.copy(S.logs.map(l => l.t).join('\n') || JSON.stringify(S.status)); toast('Copied'); return;
       case 'refresh-logs': await loadLogs(); render(); return;
       case 'install-udev': { const r = await window.agent.installUdev(); toast(r && r.ok ? 'Rule installed, re-plug the receiver' : (r && r.error) || 'Failed', !(r && r.ok)); setTimeout(refresh, 2000); return; }
@@ -797,6 +797,9 @@
   render();
   (async () => {
     S.ui = (await window.agent.uiSettings()) || {};
+    // the theme also lives in the agent-side settings, which survive a rename of the app
+    let storedTheme = null; try { storedTheme = localStorage.getItem('theme'); } catch (e) {}
+    if (!storedTheme && S.ui.theme) { S.theme = S.ui.theme; try { localStorage.setItem('theme', S.ui.theme); } catch (e) {} }
     S.appInfo = (await window.agent.appInfo()) || {};
     try { S.agentInfo = await window.agent.agentInfo(); } catch (e) {}
     let onboarded = false; try { onboarded = localStorage.getItem('onboarded') === '1'; } catch (e) {}

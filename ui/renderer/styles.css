@@ -1,4 +1,4 @@
-/* OpenOptions: Adwaita-style window, four themes. Variables follow the design mockup. */
+/* LogiMX: Adwaita-style window, four themes. Variables follow the design mockup. */
 :root, [data-theme="light"] {
   --win: #fafafb; --view: #fff; --hb: #fff; --side: #ebebed; --card: #fff;
   --fg: rgba(0,0,0,.85); --dim: rgba(0,0,0,.55); --brd: rgba(0,0,0,.12);

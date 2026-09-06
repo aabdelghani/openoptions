@@ -1,26 +1,33 @@
-// OpenOptions UI: Electron main process. Talks to the C++ agent over a UNIX socket,
+// LogiMX UI: Electron main process. Talks to the C++ agent over a UNIX socket,
 // keeps a tray indicator with battery levels and raises low battery notifications.
 const { app, BrowserWindow, ipcMain, nativeTheme, Tray, Menu, Notification, nativeImage, dialog, shell, clipboard, globalShortcut, screen } = require('electron');
-app.setName('OpenOptions');
+app.setName('LogiMX');
 const PACKAGED = app.isPackaged;
 const APPIMAGE = process.env.APPIMAGE || '';
-const WM_CLASS = PACKAGED ? 'openoptions' : 'OpenOptions';
+const WM_CLASS = PACKAGED ? 'logimx' : 'LogiMX';
 // files shipped next to the app: repo root in development, resources/ in a package
 const resPath = (...p) => PACKAGED ? path.join(process.resourcesPath, ...p) : path.join(__dirname, '..', ...p);
 // how to launch this very app again (autostart, desktop entry)
-const launchCmd = () => APPIMAGE ? `"${APPIMAGE}"` : PACKAGED ? process.execPath : `${process.execPath} ${__dirname} --no-sandbox --class=OpenOptions`;
+const launchCmd = () => APPIMAGE ? `"${APPIMAGE}"` : PACKAGED ? process.execPath : `${process.execPath} ${__dirname} --no-sandbox --class=LogiMX`;
 const fs = require('fs');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
 
 const UI_SETTINGS_PATH = path.join(app.getPath('userData'), 'ui-settings.json');
-function loadUi() { try { return JSON.parse(fs.readFileSync(UI_SETTINGS_PATH, 'utf8')); } catch (e) { return { tray: true, minimize: true, updates: true }; } }
+function loadUi() {
+  try { return JSON.parse(fs.readFileSync(UI_SETTINGS_PATH, 'utf8')); } catch (e) {}
+  // the app was called OpenOptions before 0.4: keep the window settings across the rename
+  for (const old of ['OpenOptions', 'openoptions-ui']) {
+    try { return JSON.parse(fs.readFileSync(path.join(app.getPath('appData'), old, 'ui-settings.json'), 'utf8')); } catch (e) {}
+  }
+  return { tray: true, minimize: true, updates: true };
+}
 function saveUi(u) { try { fs.mkdirSync(path.dirname(UI_SETTINGS_PATH), { recursive: true }); fs.writeFileSync(UI_SETTINGS_PATH, JSON.stringify(u, null, 2)); } catch (e) {} }
 let uiSettings = null;
 const net = require('net');
 const os = require('os');
 
-const SOCKET = path.join(process.env.XDG_RUNTIME_DIR || `/run/user/${os.userInfo().uid}`, 'openoptions.sock');
+const SOCKET = path.join(process.env.XDG_RUNTIME_DIR || `/run/user/${os.userInfo().uid}`, 'logimx.sock');
 const LOW = 20, CRITICAL = 10;
 
 let win = null;
@@ -98,7 +105,7 @@ function updateTray() {
     const b = d.battery;
     return `${d.name}: ${b ? b.percent + '%' + (b.charging ? ' charging' : '') : 'battery n/a'}`;
   });
-  tray.setToolTip(connected ? (lines.length ? lines.join('\n') + (paused ? '\nDiversion paused' : '') : 'OpenOptions: no devices') : 'OpenOptions: agent not running');
+  tray.setToolTip(connected ? (lines.length ? lines.join('\n') + (paused ? '\nDiversion paused' : '') : 'LogiMX: no devices') : 'LogiMX: agent not running');
   const items = [];
   if (!connected) items.push({ label: 'Agent not running', enabled: false });
   else if (!devices.length) items.push({ label: 'No devices', enabled: false });
@@ -116,7 +123,7 @@ function updateTray() {
     }
     items.push({ type: 'separator' });
   }
-  items.push({ label: 'Open OpenOptions', icon: menuIcon('window'), click: showWindow });
+  items.push({ label: 'Open LogiMX', icon: menuIcon('window'), click: showWindow });
   items.push({ label: paused ? 'Resume diversion' : 'Pause diversion', icon: menuIcon(paused ? 'play' : 'pause'), enabled: connected, click: () => rpc(paused ? 'resume_diversion' : 'pause_diversion').then(() => refreshGeneral().then(updateTray)).catch(() => {}) });
   items.push({ label: 'Status panel', icon: menuIcon('panel'), click: () => showTrayPanel() });
   items.push({ label: 'Quit', icon: menuIcon('power'), click: () => { app.isQuitting = true; app.quit(); } });
@@ -373,7 +380,7 @@ function createWindow() {
     minWidth: 980,
     minHeight: 640,
     backgroundColor: '#0e1116',
-    title: 'OpenOptions',
+    title: 'LogiMX',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     autoHideMenuBar: true,
     frame: false,
@@ -434,26 +441,26 @@ ipcMain.handle('stop-tool', async (_e, name) => {
   return { ok: false, error: 'unknown tool' };
 });
 ipcMain.handle('install-udev', async () => {
-  const rule = resPath('udev', '60-openoptions.rules');
+  const rule = resPath('udev', '60-logimx.rules');
   if (!fs.existsSync(rule)) return { ok: false, error: 'rule file missing' };
-  const script = `cp '${rule}' /etc/udev/rules.d/60-openoptions.rules && udevadm control --reload && udevadm trigger`;
+  const script = `cp '${rule}' /etc/udev/rules.d/60-logimx.rules && udevadm control --reload && udevadm trigger`;
   const r = await run('pkexec', ['sh', '-c', script]);
   return r.ok ? { ok: true } : { ok: false, error: r.error || 'cancelled' };
 });
 function setAutostart(on) {
   const unitDir = path.join(os.homedir(), '.config', 'systemd', 'user');
-  const agentBin = fs.existsSync(path.join(os.homedir(), '.local', 'bin', 'openoptions-agent')) ? path.join(os.homedir(), '.local', 'bin', 'openoptions-agent') : path.join(__dirname, '..', 'agent', 'build', 'openoptions-agent');
-  const unit = `[Unit]\nDescription=OpenOptions agent for MX Master and MX Keys devices\nAfter=graphical-session.target\nPartOf=graphical-session.target\n\n[Service]\nType=simple\nExecStart=${agentBin}\nRestart=on-failure\nRestartSec=2\n\n[Install]\nWantedBy=graphical-session.target\n`;
-  try { fs.mkdirSync(unitDir, { recursive: true }); fs.writeFileSync(path.join(unitDir, 'openoptions.service'), unit); } catch (e) { return; }
-  execFile('systemctl', ['--user', 'daemon-reload'], () => execFile('systemctl', ['--user', on ? 'enable' : 'disable', 'openoptions.service'], () => {}));
-  const autostartDir = path.join(os.homedir(), '.config', 'autostart'), desktop = path.join(autostartDir, 'openoptions.desktop');
-  if (on) { try { fs.mkdirSync(autostartDir, { recursive: true }); fs.writeFileSync(desktop, `[Desktop Entry]\nType=Application\nName=OpenOptions\nIcon=openoptions\nExec=${launchCmd()} --hidden\nStartupWMClass=${WM_CLASS}\nX-GNOME-Autostart-enabled=true\n`); } catch (e) {} }
+  const agentBin = fs.existsSync(path.join(os.homedir(), '.local', 'bin', 'logimx-agent')) ? path.join(os.homedir(), '.local', 'bin', 'logimx-agent') : path.join(__dirname, '..', 'agent', 'build', 'logimx-agent');
+  const unit = `[Unit]\nDescription=LogiMX agent for MX Master and MX Keys devices\nAfter=graphical-session.target\nPartOf=graphical-session.target\n\n[Service]\nType=simple\nExecStart=${agentBin}\nRestart=on-failure\nRestartSec=2\n\n[Install]\nWantedBy=graphical-session.target\n`;
+  try { fs.mkdirSync(unitDir, { recursive: true }); fs.writeFileSync(path.join(unitDir, 'logimx.service'), unit); } catch (e) { return; }
+  execFile('systemctl', ['--user', 'daemon-reload'], () => execFile('systemctl', ['--user', on ? 'enable' : 'disable', 'logimx.service'], () => {}));
+  const autostartDir = path.join(os.homedir(), '.config', 'autostart'), desktop = path.join(autostartDir, 'logimx.desktop');
+  if (on) { try { fs.mkdirSync(autostartDir, { recursive: true }); fs.writeFileSync(desktop, `[Desktop Entry]\nType=Application\nName=LogiMX\nIcon=logimx\nExec=${launchCmd()} --hidden\nStartupWMClass=${WM_CLASS}\nX-GNOME-Autostart-enabled=true\n`); } catch (e) {} }
   else { try { fs.unlinkSync(desktop); } catch (e) {} }
 }
 ipcMain.handle('open-bluetooth', () => { execFile('gnome-control-center', ['bluetooth'], () => execFile('systemsettings', ['kcm_bluetooth'], () => {})); });
 ipcMain.handle('check-updates', () => new Promise(resolve => {
   const https = require('https');
-  const req = https.get({ host: 'api.github.com', path: '/repos/aabdelghani/openoptions/releases/latest', headers: { 'User-Agent': 'OpenOptions' }, timeout: 8000 }, res => {
+  const req = https.get({ host: 'api.github.com', path: '/repos/aabdelghani/logimx/releases/latest', headers: { 'User-Agent': 'LogiMX' }, timeout: 8000 }, res => {
     let body = ''; res.on('data', c => body += c); res.on('end', () => { try { const j = JSON.parse(body); resolve({ ok: true, latest: (j.tag_name || '').replace(/^v/, ''), url: j.html_url, current: app.getVersion() }); } catch (e) { resolve({ ok: false, error: 'unexpected reply' }); } });
   });
   req.on('error', e => resolve({ ok: false, error: e.message })); req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: 'timeout' }); });
@@ -480,10 +487,10 @@ if (!single) {
       const iconDir = path.join(os.homedir(), '.local', 'share', 'icons', 'hicolor', '256x256', 'apps');
       const appDir = path.join(os.homedir(), '.local', 'share', 'applications');
       fs.mkdirSync(iconDir, { recursive: true }); fs.mkdirSync(appDir, { recursive: true });
-      const iconSrc = path.join(__dirname, 'assets', 'icon.png'), iconDst = path.join(iconDir, 'openoptions.png');
+      const iconSrc = path.join(__dirname, 'assets', 'icon.png'), iconDst = path.join(iconDir, 'logimx.png');
       if (!fs.existsSync(iconDst) || fs.statSync(iconDst).size !== fs.statSync(iconSrc).size) fs.copyFileSync(iconSrc, iconDst);
-      const entry = `[Desktop Entry]\nType=Application\nName=OpenOptions\nComment=Buttons, gestures, keys and Easy-Switch for MX mice and keyboards\nExec=${launchCmd()}\nIcon=openoptions\nTerminal=false\nCategories=Settings;HardwareSettings;\nKeywords=mouse;keyboard;MX;Bolt;\nStartupWMClass=${WM_CLASS}\nStartupNotify=true\n`;
-      const dst = path.join(appDir, 'openoptions.desktop');
+      const entry = `[Desktop Entry]\nType=Application\nName=LogiMX\nComment=Buttons, gestures, keys and Easy-Switch for MX mice and keyboards\nExec=${launchCmd()}\nIcon=logimx\nTerminal=false\nCategories=Settings;HardwareSettings;\nKeywords=mouse;keyboard;MX;Bolt;\nStartupWMClass=${WM_CLASS}\nStartupNotify=true\n`;
+      const dst = path.join(appDir, 'logimx.desktop');
       let cur = ''; try { cur = fs.readFileSync(dst, 'utf8'); } catch (e) {}
       if (cur !== entry) { fs.writeFileSync(dst, entry); execFile('update-desktop-database', [appDir], () => {}); execFile('gtk-update-icon-cache', ['-f', '-t', path.join(os.homedir(), '.local', 'share', 'icons', 'hicolor')], () => {}); }
     } catch (e) {}
@@ -491,21 +498,21 @@ if (!single) {
   // The agent is what actually talks to the devices. Start it ourselves so the app works on a
   // fresh machine without anyone having to run something in a terminal first.
   const AGENT_UNITS = [
-    path.join(os.homedir(), '.config', 'systemd', 'user', 'openoptions.service'),
-    '/usr/lib/systemd/user/openoptions.service',
-    '/usr/local/lib/systemd/user/openoptions.service',
+    path.join(os.homedir(), '.config', 'systemd', 'user', 'logimx.service'),
+    '/usr/lib/systemd/user/logimx.service',
+    '/usr/local/lib/systemd/user/logimx.service',
   ];
   function agentCandidates() {
     const c = [];
-    if (PACKAGED) c.push(resPath('agent', 'openoptions-agent'));
-    c.push('/usr/bin/openoptions-agent',
-           '/usr/local/bin/openoptions-agent',
-           path.join(os.homedir(), '.local', 'bin', 'openoptions-agent'),
-           path.join(__dirname, '..', 'agent', 'build', 'openoptions-agent'));   // running from a checkout
+    if (PACKAGED) c.push(resPath('agent', 'logimx-agent'));
+    c.push('/usr/bin/logimx-agent',
+           '/usr/local/bin/logimx-agent',
+           path.join(os.homedir(), '.local', 'bin', 'logimx-agent'),
+           path.join(__dirname, '..', 'agent', 'build', 'logimx-agent'));   // running from a checkout
     return c.filter(p => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch (e) { return false; } });
   }
   const agentRunning = () => new Promise(r =>
-    execFile('pgrep', ['-x', 'openoptions-age'], (err, out) => r(!err && !!String(out).trim())));
+    execFile('pgrep', ['-x', 'logimx-agent'], (err, out) => r(!err && !!String(out).trim())));
 
   let starting = null;
   function startAgent() {
@@ -516,7 +523,7 @@ if (!single) {
       notify('agent-status', { connected: false, starting: true });
       if (AGENT_UNITS.some(u => { try { return fs.existsSync(u); } catch (e) { return false; } })) {
         const viaUnit = await new Promise(res =>
-          execFile('systemctl', ['--user', 'start', 'openoptions'], { timeout: 8000 }, e => res(!e)));
+          execFile('systemctl', ['--user', 'start', 'logimx'], { timeout: 8000 }, e => res(!e)));
         if (viaUnit) return { ok: true, unit: true };
       }
       const bin = agentCandidates()[0];

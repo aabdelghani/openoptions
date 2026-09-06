@@ -7,7 +7,7 @@ import socket
 import threading
 from typing import Callable
 
-SOCKET_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"), "openoptions.sock")
+SOCKET_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"), "logimx.sock")
 
 
 class Server:

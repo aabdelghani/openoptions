@@ -1,4 +1,4 @@
-// openoptionsctl: command line client for the agent
+// logimxctl: command line client for the agent
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -9,7 +9,7 @@
 using json = nlohmann::json;
 
 static void usage() {
-    printf("openoptionsctl <command>\n"
+    printf("logimxctl <command>\n"
            "  status                      agent status\n"
            "  devices                     list devices and their state\n"
            "  show <id>                   full JSON for one device\n"

@@ -1,14 +1,14 @@
 {
-  "name": "openoptions-ui",
-  "productName": "OpenOptions",
+  "name": "logimx-ui",
+  "productName": "LogiMX",
   "version": "0.3.0",
-  "description": "OpenOptions: third-party configuration app for MX Master and MX Keys devices on Linux",
-  "homepage": "https://github.com/aabdelghani/openoptions",
+  "description": "LogiMX: third-party configuration app for MX Master and MX Keys devices on Linux",
+  "homepage": "https://github.com/aabdelghani/logimx",
   "author": "aabdelghany",
   "license": "MIT",
   "main": "main.js",
   "scripts": {
-    "start": "electron . --class=OpenOptions",
+    "start": "electron . --class=LogiMX",
     "dist:appimage": "electron-builder --linux AppImage --publish never",
     "dist:dir": "electron-builder --linux dir --publish never"
   },
@@ -20,9 +20,9 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "io.github.aabdelghani.openoptions",
-    "productName": "OpenOptions",
-    "executableName": "openoptions",
+    "appId": "io.github.aabdelghani.logimx",
+    "productName": "LogiMX",
+    "executableName": "logimx",
     "directories": {
       "output": "dist"
     },
@@ -38,20 +38,20 @@
     ],
     "extraResources": [
       {
-        "from": "../agent/build/openoptions-agent",
-        "to": "agent/openoptions-agent"
+        "from": "../agent/build/logimx-agent",
+        "to": "agent/logimx-agent"
       },
       {
-        "from": "../agent/build/openoptionsctl",
-        "to": "agent/openoptionsctl"
+        "from": "../agent/build/logimxctl",
+        "to": "agent/logimxctl"
       },
       {
-        "from": "../udev/60-openoptions.rules",
-        "to": "udev/60-openoptions.rules"
+        "from": "../udev/60-logimx.rules",
+        "to": "udev/60-logimx.rules"
       },
       {
-        "from": "../systemd/openoptions.service",
-        "to": "systemd/openoptions.service"
+        "from": "../systemd/logimx.service",
+        "to": "systemd/logimx.service"
       }
     ],
     "linux": {
@@ -63,10 +63,10 @@
       "icon": "assets/icon.png",
       "synopsis": "Buttons, gestures, keys and Easy-Switch for MX mice and keyboards",
       "desktop": {
-        "StartupWMClass": "openoptions",
+        "StartupWMClass": "logimx",
         "Keywords": "mouse;keyboard;MX;Bolt;"
       },
-      "artifactName": "OpenOptions-${version}-${arch}.${ext}"
+      "artifactName": "LogiMX-${version}-${arch}.${ext}"
     }
   }
 }
