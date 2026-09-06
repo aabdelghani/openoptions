@@ -8,7 +8,7 @@
     devices: [], presets: null, apps: null, general: {}, conflicts: [], status: {}, connected: false, appInfo: {},
     theme: 'light', mode: 'app', page: 'buttons', dev: null, dir: 'tap', dlg: null, picker: null, menu: null,
     pair: { step: 1, found: [] }, ob: { step: 1, preset: 'gnome' }, appDetail: null, conflictDismissed: false,
-    thumbSpeed: 5, history: {}, logs: [], backups: [], ui: {}, agentBusy: false, agentErr: null, agentInfo: null, buildStep: null,
+    thumbSpeed: 5, history: {}, logs: [], backups: [], ui: {}, agentBusy: false, agentErr: null, agentInfo: null, buildStep: null, ready: false, loaded: false,
   };
   try { S.theme = localStorage.getItem('theme') || 'light'; } catch (e) {}
   const VERSION = '0.3.0';
@@ -523,21 +523,22 @@
   // ----------------------------------------------------------- states
   function renderEmpty() {
     const c = S.conflicts[0], needsBuild = agentNeedsBuild();
+    const booting = !S.ready || (S.connected && !S.loaded);
     return `<div class="window"><main class="main empty-wrap">
       <header class="hb"><span class="title">OpenOptions</span><div class="right"><div style="position:relative"><button class="hbtn icon" data-act="menu-theme"><i class="fa-solid ${S.theme.includes('dark') ? 'fa-moon' : 'fa-sun'}"></i></button>${S.menu === 'theme' ? themeMenu() : ''}</div><button class="hbtn close" data-act="win-close"><i class="fa-solid fa-xmark"></i></button></div></header>
       ${c ? `<div class="banner"><i class="fa-solid fa-triangle-exclamation"></i><span><strong>${esc(c.name)} is running.</strong> Two programs diverting the same buttons will fight over the device.</span><button class="bact" data-act="stop-tool" data-tool="${esc(c.name)}">Stop ${esc(c.name)}</button></div>` : ''}
-      <div class="empty"><div class="ring"><i class="${S.connected ? 'fa-brands fa-usb' : S.agentBusy ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-power-off'}"></i></div>
-        <div class="t">${S.connected ? 'No devices found' : S.agentBusy ? esc(S.buildStep || 'Starting the agent…') : 'Agent not running'}</div>
-        <div class="s">${S.connected
+      <div class="empty"><div class="ring"><i class="${booting || S.agentBusy ? 'fa-solid fa-spinner fa-spin' : S.connected ? 'fa-brands fa-usb' : 'fa-solid fa-power-off'}"></i></div>
+        <div class="t">${booting ? 'Looking for devices…' : S.connected ? 'No devices found' : S.agentBusy ? esc(S.buildStep || 'Starting the agent…') : 'Agent not running'}</div>
+        <div class="s">${booting ? 'One moment.' : S.connected
           ? 'Plug in the Bolt or Unifying receiver, or pair over Bluetooth. Devices appear here as soon as they connect.'
           : S.agentBusy
             ? 'This can take a minute the first time. The window connects on its own.'
             : needsBuild
               ? 'The agent has not been compiled yet. The app can do that for you.'
               : `${S.agentErr ? esc(S.agentErr) + '. ' : ''}The agent is the background service that talks to your devices.`}</div>
-        <div style="display:flex;gap:8px;margin-top:8px">${S.connected
+        <div style="display:flex;gap:8px;margin-top:8px">${booting ? '' : S.connected
           ? '<button class="btn primary" data-act="pair"><i class="fa-solid fa-plus"></i>Pair a device</button>'
-          : S.agentBusy ? '' : `<button class="btn primary" data-act="start-agent"><i class="fa-solid ${needsBuild ? 'fa-hammer' : 'fa-play'}"></i>${needsBuild ? 'Build and start' : 'Start the agent'}</button>`}<button class="btn" data-act="onboard"><i class="fa-solid fa-shield-halved"></i>Setup guide</button></div></div></main></div>`;
+          : S.agentBusy ? '' : `<button class="btn primary" data-act="start-agent"><i class="fa-solid ${needsBuild ? 'fa-hammer' : 'fa-play'}"></i>${needsBuild ? 'Build and start' : 'Start the agent'}</button>`}${booting ? '' : '<button class="btn" data-act="onboard"><i class="fa-solid fa-shield-halved"></i>Setup guide</button>'}</div></div></main></div>`;
   }
   function renderOnboard() {
     const o = S.ob;
@@ -756,15 +757,21 @@
   async function loadLogs() { try { S.logs = (await window.agent.call('logs')).map(t => ({ t, c: /WARN/.test(t) ? 'warn' : /ERR|fatal/.test(t) ? 'err' : 'dim' })); } catch (e) { S.logs = []; } }
   async function refresh() {
     try {
-      S.devices = await window.agent.call('devices');
-      if (!S.presets) S.presets = await window.agent.call('presets');
-      S.status = await window.agent.call('status');
-      S.general = S.status.general || {}; S.conflicts = S.status.conflicts || [];
+      // everything the first paint needs, in one round trip
+      const [devices, status, presets] = await Promise.all([
+        window.agent.call('devices'),
+        window.agent.call('status'),
+        S.presets ? Promise.resolve(S.presets) : window.agent.call('presets'),
+      ]);
+      S.devices = devices; S.status = status; S.presets = presets;
+      S.general = status.general || {}; S.conflicts = status.conflicts || [];
+      if (!S.dev || !S.devices.some(d => d.id === S.dev)) { S.dev = S.devices.length ? S.devices[0].id : null; if (S.dev && !generalPages.includes(S.page)) S.page = devicePages(S.devices[0])[0]; }
+      S.connected = true; S.loaded = true;
+      render();
+      // the rest is not needed to show the device, so let it arrive afterwards
       if (!S.apps) window.agent.call('applications').then(a => { S.apps = a; }).catch(() => { S.apps = []; });
       try { S.backups = await window.agent.call('list_backups'); } catch (e) { S.backups = []; }
       for (const d of S.devices) { try { S.history[d.id] = await window.agent.call('battery_history', { id: d.id }); } catch (e) {} }
-      if (!S.dev || !S.devices.some(d => d.id === S.dev)) { S.dev = S.devices.length ? S.devices[0].id : null; if (S.dev && !generalPages.includes(S.page)) S.page = devicePages(S.devices[0])[0]; }
-      S.connected = true;
       if (S.page === 'about') await loadLogs();
     } catch (e) { S.connected = false; }
     render();
@@ -774,7 +781,7 @@
   window.agent.onStatus(st => {
     S.connected = !!st.connected;
     if (st.connected) { S.agentBusy = false; S.agentErr = null; refresh(); }
-    else { S.devices = []; if (st.starting) S.agentBusy = true; render(); }
+    else { S.devices = []; S.loaded = false; if (st.starting) S.agentBusy = true; render(); }
   });
   window.agent.onBuild(m => { if (m && m.step) { S.buildStep = m.step; S.agentBusy = true; render(); } });
   window.agent.onEvent(msg => {
@@ -795,9 +802,9 @@
     let onboarded = false; try { onboarded = localStorage.getItem('onboarded') === '1'; } catch (e) {}
     if (!onboarded) S.mode = 'onboard';
     const c = await window.agent.connected();
-    if (c) { S.connected = true; await refresh(); return; }
+    if (c) { S.connected = true; await refresh(); S.ready = true; render(); return; }
     // the main process starts the agent on launch; show that rather than a bare "not running"
-    S.agentBusy = true; render();
+    S.ready = true; S.agentBusy = true; render();
     setTimeout(() => { if (!S.connected) { S.agentBusy = false; render(); } }, 9000);
   })();
 })();
