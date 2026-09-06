@@ -22,4 +22,5 @@ contextBridge.exposeInMainWorld('agent', {
   checkUpdates: () => ipcRenderer.invoke('check-updates'),
   trayPanel: () => ipcRenderer.invoke('tray-panel'),
   screenInfo: () => ipcRenderer.invoke('screen-info'),
+  startAgent: () => ipcRenderer.invoke('start-agent'),
 });

@@ -179,12 +179,15 @@ function mergeDevice(summary) {
 }
 
 // ------------------------------------------------------------------- socket
+let autoRestarts = 0;
+let restartAgent = null;      // set once the app is ready (see startAgent below)
 function connect() {
   if (sock) return;
   sock = net.createConnection(SOCKET);
   sock.setEncoding('utf8');
   sock.on('connect', () => {
     connected = true;
+    autoRestarts = 0;
     notify('agent-status', { connected: true });
     refreshDevices();
   });
@@ -219,6 +222,8 @@ function connect() {
     updateTray();
     notify('agent-status', { connected: false });
     setTimeout(connect, 1500);
+    // the agent went away while we were running: bring it back, but do not fight a crash loop
+    if (restartAgent && autoRestarts < 3) { autoRestarts++; setTimeout(() => { if (!connected && restartAgent) restartAgent().catch(() => {}); }, 3000); }
   };
   sock.on('error', drop);
   sock.on('close', drop);
@@ -483,29 +488,58 @@ if (!single) {
       if (cur !== entry) { fs.writeFileSync(dst, entry); execFile('update-desktop-database', [appDir], () => {}); execFile('gtk-update-icon-cache', ['-f', '-t', path.join(os.homedir(), '.local', 'share', 'icons', 'hicolor')], () => {}); }
     } catch (e) {}
   }
-  let agentChild = null;
+  // The agent is what actually talks to the devices. Start it ourselves so the app works on a
+  // fresh machine without anyone having to run something in a terminal first.
+  const AGENT_UNITS = [
+    path.join(os.homedir(), '.config', 'systemd', 'user', 'openoptions.service'),
+    '/usr/lib/systemd/user/openoptions.service',
+    '/usr/local/lib/systemd/user/openoptions.service',
+  ];
   function agentCandidates() {
     const c = [];
     if (PACKAGED) c.push(resPath('agent', 'openoptions-agent'));
-    c.push('/usr/bin/openoptions-agent', '/usr/local/bin/openoptions-agent', path.join(os.homedir(), '.local', 'bin', 'openoptions-agent'));
+    c.push('/usr/bin/openoptions-agent',
+           '/usr/local/bin/openoptions-agent',
+           path.join(os.homedir(), '.local', 'bin', 'openoptions-agent'),
+           path.join(__dirname, '..', 'agent', 'build', 'openoptions-agent'));   // running from a checkout
     return c.filter(p => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch (e) { return false; } });
   }
-  function maybeStartAgent() {
-    if (!PACKAGED || connected || agentChild) return;
-    execFile('pgrep', ['-x', 'openoptions-age'], (err, out) => {
-      if (!err && String(out).trim()) return;                 // an agent exists, it just is not up yet
+  const agentRunning = () => new Promise(r =>
+    execFile('pgrep', ['-x', 'openoptions-age'], (err, out) => r(!err && !!String(out).trim())));
+
+  let starting = null;
+  function startAgent() {
+    if (connected) return Promise.resolve({ ok: true });
+    if (starting) return starting;
+    starting = (async () => {
+      if (await agentRunning()) return { ok: true, already: true };
+      notify('agent-status', { connected: false, starting: true });
+      if (AGENT_UNITS.some(u => { try { return fs.existsSync(u); } catch (e) { return false; } })) {
+        const viaUnit = await new Promise(res =>
+          execFile('systemctl', ['--user', 'start', 'openoptions'], { timeout: 8000 }, e => res(!e)));
+        if (viaUnit) return { ok: true, unit: true };
+      }
       const bin = agentCandidates()[0];
-      if (!bin) return;
+      if (!bin) return { ok: false, error: PACKAGED ? 'agent binary missing from this install' : 'agent is not built yet' };
       try {
-        agentChild = spawn(bin, [], { stdio: 'ignore' });
-        agentChild.on('exit', () => { agentChild = null; });
-      } catch (e) { agentChild = null; }
-    });
+        // detached on purpose: the agent is a daemon and keeps the devices configured
+        // after this window is closed
+        const child = spawn(bin, [], { stdio: 'ignore', detached: true });
+        child.unref();
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+      for (let i = 0; i < 24 && !connected; i++) await new Promise(r => setTimeout(r, 250));
+      return connected || (await agentRunning()) ? { ok: true } : { ok: false, error: 'the agent exited on startup' };
+    })();
+    starting.finally(() => { starting = null; });
+    return starting;
   }
-  app.on('will-quit', () => { if (agentChild) { try { agentChild.kill(); } catch (e) {} } });
+  restartAgent = startAgent;
+  ipcMain.handle('start-agent', () => startAgent());
   app.whenReady().then(() => {
     ensureDesktopEntry();
-    setTimeout(maybeStartAgent, 1500);
+    setTimeout(() => { startAgent().catch(() => {}); }, 600);
     uiSettings = loadUi();
     if (uiSettings.tray !== false) createTray();
     connect();
