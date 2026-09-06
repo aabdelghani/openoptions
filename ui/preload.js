@@ -23,4 +23,7 @@ contextBridge.exposeInMainWorld('agent', {
   trayPanel: () => ipcRenderer.invoke('tray-panel'),
   screenInfo: () => ipcRenderer.invoke('screen-info'),
   startAgent: () => ipcRenderer.invoke('start-agent'),
+  agentInfo: () => ipcRenderer.invoke('agent-info'),
+  buildAgent: () => ipcRenderer.invoke('build-agent'),
+  onBuild: cb => ipcRenderer.on('agent-build', (_e, m) => cb(m)),
 });

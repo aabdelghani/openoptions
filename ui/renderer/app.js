@@ -8,7 +8,7 @@
     devices: [], presets: null, apps: null, general: {}, conflicts: [], status: {}, connected: false, appInfo: {},
     theme: 'light', mode: 'app', page: 'buttons', dev: null, dir: 'tap', dlg: null, picker: null, menu: null,
     pair: { step: 1, found: [] }, ob: { step: 1, preset: 'gnome' }, appDetail: null, conflictDismissed: false,
-    thumbSpeed: 5, history: {}, logs: [], backups: [], ui: {}, agentBusy: false, agentErr: null,
+    thumbSpeed: 5, history: {}, logs: [], backups: [], ui: {}, agentBusy: false, agentErr: null, agentInfo: null, buildStep: null,
   };
   try { S.theme = localStorage.getItem('theme') || 'light'; } catch (e) {}
   const VERSION = '0.3.0';
@@ -55,6 +55,7 @@
     gesture_navigation: 'fa-hand-pointer', gesture_windows: 'fa-hand-pointer', gesture_volume: 'fa-hand-pointer', gesture_pan: 'fa-hand-pointer' };
   const actionIcon = a => typeof a === 'string' ? (PRESET_ICON[a] || ICON[(S.presets && S.presets.all[a] || {}).type] || 'fa-circle-dot') : ICON[(a || {}).type] || 'fa-circle-dot';
   const keyName = k => k.replace(/^KEY_/, '').replace(/^LEFT(CTRL|SHIFT|ALT|META)$/, '$1').replace(/^RIGHT(CTRL|SHIFT|ALT|META)$/, '$1').replace('META', 'Super').replace('CTRL', 'Ctrl').replace('SHIFT', 'Shift').replace('ALT', 'Alt').replace(/^([A-Z])$/, '$1').replace(/^([A-Z][A-Z]+)$/, m => m.charAt(0) + m.slice(1).toLowerCase());
+  const agentNeedsBuild = () => !S.connected && !!S.agentInfo && !S.agentInfo.binary && !!S.agentInfo.canBuild;
   const batIcon = b => !b ? 'fa-battery-empty' : b.percent > 80 ? 'fa-battery-full' : b.percent > 55 ? 'fa-battery-three-quarters' : b.percent > 30 ? 'fa-battery-half' : b.percent > 10 ? 'fa-battery-quarter' : 'fa-battery-empty';
   const batClass = b => !b ? '' : b.charging ? 'ok' : b.percent <= 10 ? 'err' : b.percent <= 20 ? 'warn' : 'ok';
   const CID = { middle: 82, back: 83, forward: 86, gesture: 195, mode: 196 };
@@ -521,20 +522,22 @@
 
   // ----------------------------------------------------------- states
   function renderEmpty() {
-    const c = S.conflicts[0];
+    const c = S.conflicts[0], needsBuild = agentNeedsBuild();
     return `<div class="window"><main class="main empty-wrap">
       <header class="hb"><span class="title">OpenOptions</span><div class="right"><div style="position:relative"><button class="hbtn icon" data-act="menu-theme"><i class="fa-solid ${S.theme.includes('dark') ? 'fa-moon' : 'fa-sun'}"></i></button>${S.menu === 'theme' ? themeMenu() : ''}</div><button class="hbtn close" data-act="win-close"><i class="fa-solid fa-xmark"></i></button></div></header>
       ${c ? `<div class="banner"><i class="fa-solid fa-triangle-exclamation"></i><span><strong>${esc(c.name)} is running.</strong> Two programs diverting the same buttons will fight over the device.</span><button class="bact" data-act="stop-tool" data-tool="${esc(c.name)}">Stop ${esc(c.name)}</button></div>` : ''}
       <div class="empty"><div class="ring"><i class="${S.connected ? 'fa-brands fa-usb' : S.agentBusy ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-power-off'}"></i></div>
-        <div class="t">${S.connected ? 'No devices found' : S.agentBusy ? 'Starting the agent…' : 'Agent not running'}</div>
+        <div class="t">${S.connected ? 'No devices found' : S.agentBusy ? esc(S.buildStep || 'Starting the agent…') : 'Agent not running'}</div>
         <div class="s">${S.connected
           ? 'Plug in the Bolt or Unifying receiver, or pair over Bluetooth. Devices appear here as soon as they connect.'
           : S.agentBusy
-            ? 'This only takes a moment. The window connects on its own.'
-            : `${S.agentErr ? esc(S.agentErr) + '. ' : ''}The agent is the background service that talks to your devices.`}</div>
+            ? 'This can take a minute the first time. The window connects on its own.'
+            : needsBuild
+              ? 'The agent has not been compiled yet. The app can do that for you.'
+              : `${S.agentErr ? esc(S.agentErr) + '. ' : ''}The agent is the background service that talks to your devices.`}</div>
         <div style="display:flex;gap:8px;margin-top:8px">${S.connected
           ? '<button class="btn primary" data-act="pair"><i class="fa-solid fa-plus"></i>Pair a device</button>'
-          : S.agentBusy ? '' : '<button class="btn primary" data-act="start-agent"><i class="fa-solid fa-play"></i>Start the agent</button>'}<button class="btn" data-act="onboard"><i class="fa-solid fa-shield-halved"></i>Setup guide</button></div></div></main></div>`;
+          : S.agentBusy ? '' : `<button class="btn primary" data-act="start-agent"><i class="fa-solid ${needsBuild ? 'fa-hammer' : 'fa-play'}"></i>${needsBuild ? 'Build and start' : 'Start the agent'}</button>`}<button class="btn" data-act="onboard"><i class="fa-solid fa-shield-halved"></i>Setup guide</button></div></div></main></div>`;
   }
   function renderOnboard() {
     const o = S.ob;
@@ -544,7 +547,7 @@
       const agentOk = S.connected, devOk = S.devices.length > 0;
       const conf = S.conflicts.length;
       body = `<div><h1>Permissions</h1><div class="lead">OpenOptions talks to devices over HID and emits keys through uinput. Both need a one-time udev rule.</div></div>
-        ${card(`<div class="row">${agentOk ? '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>' : '<span class="mark-n">1</span>'}<div class="grow"><div class="lbl">Background agent</div><div class="sub">${agentOk ? 'Running' : S.agentBusy ? 'Starting…' : esc(S.agentErr || 'Not running yet')}</div></div>${agentOk || S.agentBusy ? '' : '<button class="btn sm" data-act="start-agent">Start now</button>'}</div>
+        ${card(`<div class="row">${agentOk ? '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>' : '<span class="mark-n">1</span>'}<div class="grow"><div class="lbl">Background agent</div><div class="sub">${agentOk ? 'Running' : S.agentBusy ? 'Starting…' : esc(S.agentErr || 'Not running yet')}</div></div>${agentOk || S.agentBusy ? '' : `<button class="btn sm" data-act="start-agent">${agentNeedsBuild() ? 'Build and start' : 'Start now'}</button>`}</div>
           <div class="row">${devOk ? '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>' : '<span class="mark-n">2</span>'}<div class="grow"><div class="lbl">Access to /dev/hidraw* and /dev/uinput</div>${devOk ? '' : '<code class="cmd">sudo cp udev/60-openoptions.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger</code>'}</div></div>
           <div class="row">${conf ? '<span class="mark-n">3</span>' : '<span class="mark-ok"><i class="fa-solid fa-check"></i></span>'}<div class="grow"><div class="lbl">Stop Solaar or logid while OpenOptions runs</div>${conf ? `<div class="sub">${esc(S.conflicts.map(c => c.name).join(', '))} is running</div>` : ''}</div>${conf ? `<button class="btn sm" data-act="stop-tool" data-tool="${esc(S.conflicts[0].name)}">Stop</button>` : ''}</div>`)}
         ${devOk ? '' : '<div><button class="btn primary" data-act="install-udev"><i class="fa-solid fa-shield-halved"></i>Install rule with pkexec</button></div>'}`;
@@ -626,9 +629,13 @@
       case 'theme': S.theme = key; try { localStorage.setItem('theme', key); } catch (x) {} window.agent.setTheme(key); S.menu = null; render(); return;
       case 'theme-select': S.theme = b.value; try { localStorage.setItem('theme', b.value); } catch (x) {} window.agent.setTheme(b.value); render(); return;
       case 'start-agent': {
-        S.agentBusy = true; S.agentErr = null; render();
-        let r; try { r = await window.agent.startAgent(); } catch (x) { r = { ok: false, error: x.message }; }
-        S.agentBusy = false;
+        const build = agentNeedsBuild();
+        S.agentBusy = true; S.agentErr = null; S.buildStep = build ? 'Preparing the build…' : null; render();
+        let r;
+        try { r = build ? await window.agent.buildAgent() : await window.agent.startAgent(); }
+        catch (x) { r = { ok: false, error: x.message }; }
+        S.agentBusy = false; S.buildStep = null;
+        try { S.agentInfo = await window.agent.agentInfo(); } catch (x) {}
         if (r && r.ok) { toast('Agent started'); try { await refresh(); } catch (x) {} }
         else { S.agentErr = (r && r.error) || 'could not start'; toast('Could not start the agent: ' + S.agentErr, true); }
         render(); return;
@@ -769,6 +776,7 @@
     if (st.connected) { S.agentBusy = false; S.agentErr = null; refresh(); }
     else { S.devices = []; if (st.starting) S.agentBusy = true; render(); }
   });
+  window.agent.onBuild(m => { if (m && m.step) { S.buildStep = m.step; S.agentBusy = true; render(); } });
   window.agent.onEvent(msg => {
     const { event, data } = msg;
     if (event === 'device' || event === 'device_added') { merge(data); if (!S.dev) S.dev = data.id; render(); }
@@ -783,6 +791,7 @@
   (async () => {
     S.ui = (await window.agent.uiSettings()) || {};
     S.appInfo = (await window.agent.appInfo()) || {};
+    try { S.agentInfo = await window.agent.agentInfo(); } catch (e) {}
     let onboarded = false; try { onboarded = localStorage.getItem('onboarded') === '1'; } catch (e) {}
     if (!onboarded) S.mode = 'onboard';
     const c = await window.agent.connected();

@@ -537,6 +537,55 @@ if (!single) {
   }
   restartAgent = startAgent;
   ipcMain.handle('start-agent', () => startAgent());
+
+  // Building from a source checkout, so the app can compile the agent instead of telling
+  // someone to open a terminal.
+  const sourceRoot = () => path.join(__dirname, '..');
+  function canBuildAgent() {
+    if (PACKAGED) return false;
+    try { fs.accessSync(path.join(sourceRoot(), 'agent', 'CMakeLists.txt'), fs.constants.R_OK); return true; }
+    catch (e) { return false; }
+  }
+  ipcMain.handle('agent-info', () => ({
+    binary: agentCandidates()[0] || null,
+    canBuild: canBuildAgent(),
+    unit: AGENT_UNITS.some(u => { try { return fs.existsSync(u); } catch (e) { return false; } }),
+  }));
+
+  const haveCmd = c => new Promise(r => execFile('sh', ['-c', 'command -v ' + c], e => r(!e)));
+  function buildProblem(out) {
+    const line = String(out).split('\n').find(l => /Could NOT find|No such file or directory|error:|fatal error/i.test(l));
+    return line ? line.trim().slice(0, 160) : '';
+  }
+  let building = null;
+  function buildAgent() {
+    if (building) return building;
+    building = (async () => {
+      if (!canBuildAgent()) return { ok: false, error: 'no source checkout to build from' };
+      for (const [cmd, hint] of [['cmake', 'cmake'], ['c++', 'g++']]) {
+        if (!(await haveCmd(cmd))) return { ok: false, error: `${hint} is not installed (sudo apt install cmake ninja-build g++ libx11-dev)` };
+      }
+      const root = sourceRoot(), src = path.join(root, 'agent'), out = path.join(root, 'agent', 'build');
+      const run = (cmd, args) => new Promise(res => execFile(cmd, args, { cwd: root, timeout: 420000, maxBuffer: 8 << 20 },
+        (err, so, se) => res({ ok: !err, out: String(so || '') + String(se || '') })));
+      const gen = (await haveCmd('ninja')) ? ['-G', 'Ninja'] : [];
+      notify('agent-build', { step: 'Configuring the build…' });
+      let r = await run('cmake', ['-B', out, '-S', src, ...gen, '-DCMAKE_BUILD_TYPE=Release']);
+      if (!r.ok) return { ok: false, error: buildProblem(r.out) || 'cmake could not configure the build' };
+      notify('agent-build', { step: 'Compiling the agent…' });
+      r = await run('cmake', ['--build', out, '-j', String(Math.max(2, os.cpus().length))]);
+      if (!r.ok) return { ok: false, error: buildProblem(r.out) || 'the build failed' };
+      return { ok: true };
+    })();
+    building.finally(() => { building = null; });
+    return building;
+  }
+  ipcMain.handle('build-agent', async () => {
+    const b = await buildAgent();
+    if (!b.ok) return b;
+    notify('agent-build', { step: 'Starting the agent…' });
+    return startAgent();
+  });
   app.whenReady().then(() => {
     ensureDesktopEntry();
     setTimeout(() => { startAgent().catch(() => {}); }, 600);
