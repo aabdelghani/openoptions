@@ -167,6 +167,20 @@ Install for the current user (agent in `~/.local/bin`, systemd user service):
 sudo cp udev/60-openoptions.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
 ```
 
+## Pairing to the receiver
+
+Use "Pair a device" in the app menu. If the device you are pairing is also known to Bluetooth on
+the same machine, the pairing can fail a few seconds after the passcode is typed: BlueZ keeps
+trying to reconnect to it and that traffic shares the 2.4 GHz band with the Bolt handshake. Pair
+with the adapter switched off instead:
+
+```
+./pair-bolt.sh
+```
+
+It powers Bluetooth down, holds discovery open until the device appears, shows the passcode, and
+restores Bluetooth on exit.
+
 ## Command line
 
 ```

@@ -435,7 +435,7 @@ int Daemon::run() {
             lastScan = now;
             scanAt.reset();
         }
-        if (now - lastPoll > 30s) {
+        if (now - lastPoll > 30s && !pairing_.load()) {
             for (auto& md : snapshot()) {
                 try {
                     md->setBattery(md->dev().battery());
@@ -454,6 +454,7 @@ int Daemon::run() {
 
 void Daemon::scan() {
     std::lock_guard<std::mutex> scanLock(scanMutex_);
+    if (pairing_.load()) return;   // stay off the receiver's HID++ bus during a pairing handshake
     auto nodes = hidpp::usable(hidpp::scan());
     std::set<std::string> seen;
     for (auto& n : nodes) seen.insert(n.path);
@@ -640,6 +641,10 @@ void Daemon::pairBroadcast(const std::string& status) {
     if (!pair_.doneName.empty()) ev["done"] = pair_.doneName + " paired";
     if (!pair_.passkey.empty()) ev["passkey"] = pair_.passkey;
     broadcast("pair", ev);
+    if (!pair_.active && pairing_.exchange(false)) {
+        // pairing just ended: look for the new device (or clean up) once the bus is quiet again
+        std::thread([this] { std::this_thread::sleep_for(1200ms); scan(); }).detach();
+    }
 }
 
 void Daemon::pairStart() {
@@ -654,6 +659,7 @@ void Daemon::pairStart() {
     pair_ = PairingSession{};
     pair_.transport = bolt;
     pair_.active = true;
+    pairing_.store(true);
     pair_.started = std::chrono::steady_clock::now();
     try {
         bolt->request10(0xFF, 0x80, 0xC0, {static_cast<uint8_t>(pair_.timeoutSec), 0x01});
@@ -666,7 +672,7 @@ void Daemon::pairStart() {
 
 void Daemon::pairCancel() {
     std::lock_guard<std::mutex> lk(pairMutex_);
-    if (!pair_.active || !pair_.transport) return;
+    if (!pair_.active || !pair_.transport) { pairing_.store(false); return; }
     try {
         if (pair_.lockOpen) pair_.transport->request10(0xFF, 0x82, 0xC1, {0x02}, true);
         if (pair_.discovering) pair_.transport->request10(0xFF, 0x80, 0xC0, {0x00, 0x02});
@@ -765,6 +771,7 @@ void Daemon::onNotification(hidpp::Transport& t, const hidpp::Notification& n) {
     if (n.featureIndex == 0x41 && n.reportId == 0x10) {  // receiver: device connect / disconnect
         bool linkDown = !n.data.empty() && (n.data[0] & 0x40);
         if (linkDown) return;
+        if (pairing_.load()) return;   // the pairing path attaches the new device once the handshake is done
         DevPtr md;
         for (auto& m : snapshot())
             if (&m->transport() == &t && m->dev().index() == n.deviceIndex) md = m;
